@@ -7,5 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class AuditLog extends Model
 {
+    protected $primaryKey = 'uid';
+
     use HasFactory;
 }

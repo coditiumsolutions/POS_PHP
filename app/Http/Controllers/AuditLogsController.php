@@ -25,8 +25,8 @@ class AuditLogsController extends Controller
             $query->where('action_type', $request->action_type);
         }
 
-        if ($request->filled('table_name')) {
-            $query->where('table_name', $request->table_name);
+        if ($request->filled('entity_type')) {
+            $query->where('entity_type', $request->entity_type);
         }
 
         if ($request->filled('date_from')) {
@@ -49,7 +49,7 @@ class AuditLogsController extends Controller
         $users = User::where('is_active', true)->orderBy('full_name')->get();
         
         $actionTypes = AuditLog::distinct()->pluck('action_type');
-        $tableNames = AuditLog::distinct()->pluck('table_name');
+        $tableNames = AuditLog::distinct()->pluck('entity_type');
 
         return view('audit-logs.index', compact('logs', 'users', 'actionTypes', 'tableNames'));
     }

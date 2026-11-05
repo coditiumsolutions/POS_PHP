@@ -10,7 +10,13 @@ class ConfigurationsController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('can:administrator'); // Only admins can edit config
+        // Allow admins only - check role_name
+        $this->middleware(function ($request, $next) {
+            if (auth()->user()->role_name !== 'Administrator') {
+                abort(403, 'Only administrators can access system configuration.');
+            }
+            return $next($request);
+        });
     }
 
     public function index()

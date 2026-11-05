@@ -7,5 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class CustomerMonthlySupply extends Model
 {
+    protected $primaryKey = 'uid';
+
     use HasFactory;
 }

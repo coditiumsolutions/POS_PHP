@@ -19,6 +19,13 @@ class SalesInvoicesController extends Controller
         $this->middleware('auth');
     }
 
+    public function create()
+    {
+        $customers = Customer::where('is_active', true)->orderBy('customer_name')->get();
+        $products = Product::where('is_active', true)->orderBy('product_name')->get();
+        return view('sales-invoices.create', compact('customers', 'products'));
+    }
+
     public function index(Request $request)
     {
         $query = SalesInvoice::with('customer')

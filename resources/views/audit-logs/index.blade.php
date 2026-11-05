@@ -51,7 +51,7 @@
                         <td><small>{{ \Carbon\Carbon::parse($log->action_date)->format('d M Y H:i') }}</small></td>
                         <td><small>{{ $log->user->full_name ?? 'System' }}</small></td>
                         <td><span class="badge bg-info">{{ $log->action_type }}</span></td>
-                        <td><small>{{ $log->table_name }}</small></td>
+                        <td><small>{{ $log->entity_type }}</small></td>
                         <td><small>{{ $log->description }}</small></td>
                         <td><small>{{ $log->ip_address }}</small></td>
                     </tr>

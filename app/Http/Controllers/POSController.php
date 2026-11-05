@@ -112,7 +112,7 @@ class POSController extends Controller
             $invoice = SalesInvoice::create([
                 'invoice_no' => $invoiceNo,
                 'invoice_date' => now(),
-                'customer_uid' => $validated['customer_uid'],
+                'customer_uid' => $validated['customer_uid'] ?? null,
                 'user_uid' => $user->uid,
                 'user_name' => $user->user_name,
                 'branch' => $user->branch,
@@ -128,7 +128,7 @@ class POSController extends Controller
                 'balance_amount' => $balanceAmount,
                 'payment_status' => $balanceAmount > 0 ? 'Partial' : 'Paid',
                 'invoice_status' => 'Completed',
-                'remarks' => $validated['remarks'],
+                'remarks' => $validated['remarks'] ?? null,
                 'created_date' => now(),
             ]);
 
