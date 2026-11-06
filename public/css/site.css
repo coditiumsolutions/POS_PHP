@@ -1,0 +1,244 @@
+:root {
+  --pos-sidebar: #0f172a;
+  --pos-sidebar-text: #cbd5e1;
+  --pos-sidebar-active: #115e59;
+  --pos-accent: #0f766e;
+  --pos-bg: #f1f5f9;
+  --pos-topbar: #ffffff;
+  --pos-gold: #c9a227;
+  --pos-header-primary-height: 44px;
+  --pos-gold-bar-height: 3px;
+  --pos-header-secondary-height: 34px;
+}
+
+body {
+  margin: 0;
+  background: var(--pos-bg);
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.pos-header-bars {
+  width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 1050;
+}
+
+.pos-topbar-primary {
+  width: 100%;
+  height: var(--pos-header-primary-height);
+  background: var(--pos-sidebar);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 1rem;
+}
+
+.pos-topbar-primary .pos-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+}
+
+.pos-topbar-primary .pos-brand:hover {
+  color: #fff;
+}
+
+.pos-user {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pos-session-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.7rem;
+  max-width: min(42rem, 58vw);
+  justify-content: flex-end;
+}
+
+.pos-session-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  color: #e2e8f0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pos-session-label {
+  color: #94a3b8;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pos-gold-bar {
+  width: 100%;
+  height: var(--pos-gold-bar-height);
+  background: linear-gradient(90deg, #b8860b 0%, var(--pos-gold) 45%, #f0d78c 50%, var(--pos-gold) 55%, #b8860b 100%);
+}
+
+.pos-topbar-secondary {
+  width: 100%;
+  min-height: var(--pos-header-secondary-height);
+  height: auto;
+  background: var(--pos-topbar);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 1rem;
+  overflow: visible;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.pos-top-nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.2rem 1rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.pos-top-link {
+  color: DarkViolet;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.92rem;
+  line-height: 1.2;
+  padding: 0.2rem 0.15rem;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.pos-top-link:hover,
+.pos-top-link.active {
+  color: DarkViolet;
+  text-decoration: none;
+}
+
+.pos-top-dropdown {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.pos-top-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.pos-top-twistee {
+  border: 0;
+  background: transparent;
+  color: DarkViolet;
+  padding: 0.1rem 0.2rem;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pos-top-twistee i {
+  font-size: 0.85rem;
+  transition: transform 0.15s ease;
+}
+
+.pos-top-dropdown.open .pos-top-twistee i {
+  transform: rotate(90deg);
+}
+
+.pos-top-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  z-index: 40;
+  min-width: 11rem;
+  padding: 0.35rem 0;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.45rem;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+.pos-top-dropdown-item {
+  display: block;
+  padding: 0.4rem 0.85rem;
+  color: DarkViolet;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.pos-top-dropdown-item:hover {
+  background: #f8fafc;
+  color: DarkViolet;
+  text-decoration: none;
+}
+
+/* Keep existing sidebar below the dual header */
+.sidebar {
+  position: fixed;
+  top: calc(var(--pos-header-primary-height) + var(--pos-header-secondary-height) + var(--pos-gold-bar-height) + 8px);
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  padding: 0;
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+  background: #f8f9fa;
+  width: 250px;
+}
+
+.sidebar-sticky {
+  position: relative;
+  top: 0;
+  height: 100%;
+  padding-top: .5rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.sidebar .nav-link {
+  font-weight: 500;
+  color: #333;
+  padding: 10px 16px;
+}
+
+.sidebar .nav-link:hover {
+  background: #e9ecef;
+}
+
+.sidebar .nav-link.active {
+  color: #0f766e;
+  background: #e7f1ff;
+}
+
+.main-content {
+  margin-left: 250px;
+  padding: 20px;
+}
+
+@media print {
+  .sidebar, .pos-header-bars, .no-print {
+    display: none !important;
+  }
+  .main-content {
+    margin-left: 0;
+  }
+}
