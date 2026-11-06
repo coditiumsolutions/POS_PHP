@@ -13,261 +13,161 @@
 </head>
 <body>
 @php
+    use App\Services\NavigationCatalog;
+    use Illuminate\Support\Facades\Route as RouteFacade;
+
     $user = Auth::user();
-    $posActive = request()->routeIs('pos.*');
-    $customersActive = request()->routeIs('customers.*') || request()->routeIs('customer-payments.*');
-    $employeesActive = request()->routeIs('employees.*');
-    $adjustmentsActive = request()->routeIs('sales-returns.*') || request()->routeIs('wastage.*') || request()->routeIs('stock-adjustments.*');
-    $allModulesActive = request()->routeIs('vendors.*')
-        || request()->routeIs('products.*')
-        || request()->routeIs('inventories.*')
-        || request()->routeIs('purchase-invoices.*')
-        || request()->routeIs('sales-invoices.*')
-        || request()->routeIs('expenses.*')
-        || request()->routeIs('reports.*');
+    $navKey = session(NavigationCatalog::SessionKey) ?: NavigationCatalog::inferKeyFromRequest() ?: 'Dashboard';
+    $currentArea = NavigationCatalog::findArea($navKey);
+    $topAreas = NavigationCatalog::topAreas();
 @endphp
 
-<div class="pos-header-bars no-print">
-    <header class="pos-topbar-primary">
-        <a class="pos-brand" href="{{ route('dashboard') }}">
-            <span>Coditium POS</span>
-        </a>
-        <div class="pos-user">
-            <div class="pos-session-meta" title="Signed-in user session">
-                <span class="pos-session-item"><span class="pos-session-label">User</span> {{ $user->user_name ?? $user->full_name ?? '—' }}</span>
-                <span class="pos-session-item"><span class="pos-session-label">Terminal</span> {{ $user->terminal_name ?? '—' }}</span>
-                <span class="pos-session-item"><span class="pos-session-label">Branch</span> {{ $user->branch ?? '—' }}</span>
-            </div>
-            <form action="{{ route('logout') }}" method="POST" class="d-inline">
-                @csrf
-                <button type="submit" class="btn btn-outline-light btn-sm">Logout</button>
-            </form>
-        </div>
-    </header>
-
-    {{-- White second navbar (ported from POS_MT pos-topbar-secondary / NavigationCatalog.TopAreas) --}}
-    <header class="pos-topbar-secondary">
-        <nav class="pos-top-nav">
-            <a class="pos-top-link {{ request()->routeIs('dashboard') ? 'active' : '' }}"
-               href="{{ route('dashboard') }}">Home</a>
-
-            @if(Route::has('pos.cash'))
-                <a class="pos-top-link {{ $posActive ? 'active' : '' }}"
-                   href="{{ route('pos.cash') }}">POS</a>
-            @endif
-
-            @if(Route::has('customers.index'))
-                <a class="pos-top-link {{ $customersActive ? 'active' : '' }}"
-                   href="{{ route('customers.index') }}">Customers</a>
-            @endif
-
-            @if(Route::has('employees.index'))
-                <a class="pos-top-link {{ $employeesActive ? 'active' : '' }}"
-                   href="{{ route('employees.index') }}">Employees</a>
-            @endif
-
-            @if(Route::has('sales-returns.index'))
-                <a class="pos-top-link {{ $adjustmentsActive ? 'active' : '' }}"
-                   href="{{ route('sales-returns.index') }}">Adjustments</a>
-            @endif
-
-            <div class="pos-top-dropdown {{ $allModulesActive ? 'active' : '' }}" data-top-dropdown>
-                <div class="pos-top-dropdown-trigger">
-                    <a class="pos-top-link {{ $allModulesActive ? 'active' : '' }}"
-                       href="{{ Route::has('vendors.index') ? route('vendors.index') : '#' }}">All Modules</a>
-                    <button type="button"
-                            class="pos-top-twistee"
-                            aria-expanded="false"
-                            aria-label="Expand All Modules"
-                            data-top-twistee>
-                        <i class="bi bi-caret-right-fill" aria-hidden="true"></i>
-                    </button>
+<div class="pos-shell">
+    <div class="pos-header-bars no-print">
+        <header class="pos-topbar-primary">
+            <a class="pos-brand" href="{{ route('nav.clear') }}">
+                <span>Coditium POS</span>
+            </a>
+            <div class="pos-user">
+                <div class="pos-session-meta" title="Signed-in user session">
+                    <span class="pos-session-item"><span class="pos-session-label">User</span> {{ $user->user_name ?? $user->full_name ?? '—' }}</span>
+                    <span class="pos-session-item"><span class="pos-session-label">Terminal</span> {{ $user->terminal_name ?? '—' }}</span>
+                    <span class="pos-session-item"><span class="pos-session-label">Branch</span> {{ $user->branch ?? '—' }}</span>
                 </div>
-                <div class="pos-top-dropdown-menu" hidden>
-                    @if(Route::has('vendors.index'))
-                        <a class="pos-top-dropdown-item" href="{{ route('vendors.index') }}">Vendors</a>
-                    @endif
-                    @if(Route::has('products.index'))
-                        <a class="pos-top-dropdown-item" href="{{ route('products.index') }}">Products</a>
-                    @endif
-                    @if(Route::has('inventories.index'))
-                        <a class="pos-top-dropdown-item" href="{{ route('inventories.index') }}">Inventories</a>
-                    @endif
-                    @if(Route::has('purchase-invoices.index'))
-                        <a class="pos-top-dropdown-item" href="{{ route('purchase-invoices.index') }}">Purchases</a>
-                    @endif
-                    @if(Route::has('sales-invoices.index'))
-                        <a class="pos-top-dropdown-item" href="{{ route('sales-invoices.index') }}">Sales</a>
-                    @endif
-                    @if(Route::has('expenses.index'))
-                        <a class="pos-top-dropdown-item" href="{{ route('expenses.index') }}">Expenses</a>
-                    @endif
-                    @if(Route::has('employees.index'))
-                        <a class="pos-top-dropdown-item" href="{{ route('employees.index') }}">Employees</a>
-                    @endif
-                    @if(Route::has('reports.index'))
-                        <a class="pos-top-dropdown-item" href="{{ route('reports.index') }}">Reports</a>
-                    @elseif(Route::has('reports.sales'))
-                        <a class="pos-top-dropdown-item" href="{{ route('reports.sales') }}">Reports</a>
-                    @endif
-                </div>
+                <form action="{{ route('logout') }}" method="POST" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-outline-light btn-sm">Logout</button>
+                </form>
             </div>
-        </nav>
-    </header>
+        </header>
 
-    <div class="pos-gold-bar" aria-hidden="true"></div>
-</div>
-
-{{-- Sidebar (existing module list) --}}
-<nav class="sidebar no-print">
-    <div class="sidebar-sticky">
-        <ul class="nav flex-column">
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
-                    <i class="bi bi-speedometer2"></i> Dashboard
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('pos.*') ? 'active' : '' }}" href="{{ route('pos.cash') }}">
-                    <i class="bi bi-cash-register"></i> POS
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('sales-invoices.*') ? 'active' : '' }}" href="{{ route('sales-invoices.index') }}">
-                    <i class="bi bi-receipt"></i> Sales Invoices
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('purchase-invoices.*') ? 'active' : '' }}" href="{{ route('purchase-invoices.index') }}">
-                    <i class="bi bi-cart-check"></i> Purchase Invoices
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('customers.*') ? 'active' : '' }}" href="{{ route('customers.index') }}">
-                    <i class="bi bi-people"></i> Customers
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('vendors.*') ? 'active' : '' }}" href="{{ route('vendors.index') }}">
-                    <i class="bi bi-truck"></i> Vendors
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('products.*') ? 'active' : '' }}" href="{{ route('products.index') }}">
-                    <i class="bi bi-box-seam"></i> Products
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('inventories.*') ? 'active' : '' }}" href="{{ route('inventories.index') }}">
-                    <i class="bi bi-boxes"></i> Inventory
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('expenses.*') ? 'active' : '' }}" href="{{ route('expenses.index') }}">
-                    <i class="bi bi-cash-coin"></i> Expenses
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('sales-returns.*') ? 'active' : '' }}" href="{{ route('sales-returns.index') }}">
-                    <i class="bi bi-arrow-return-left"></i> Sales Returns
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('customer-payments.*') ? 'active' : '' }}" href="{{ route('customer-payments.index') }}">
-                    <i class="bi bi-cash-stack"></i> Customer Payments
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('vendor-payments.*') ? 'active' : '' }}" href="{{ route('vendor-payments.index') }}">
-                    <i class="bi bi-wallet"></i> Vendor Payments
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('stock-adjustments.*') ? 'active' : '' }}" href="{{ route('stock-adjustments.index') }}">
-                    <i class="bi bi-arrow-left-right"></i> Stock Adjustments
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('wastage.*') ? 'active' : '' }}" href="{{ route('wastage.index') }}">
-                    <i class="bi bi-trash"></i> Wastage
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('employees.*') ? 'active' : '' }}" href="{{ route('employees.index') }}">
-                    <i class="bi bi-person-badge"></i> Employees
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('monthly-supply.*') ? 'active' : '' }}" href="{{ route('monthly-supply.index') }}">
-                    <i class="bi bi-calendar-check"></i> Monthly Supply
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('yogurt-production.*') ? 'active' : '' }}" href="{{ route('yogurt-production.index') }}">
-                    <i class="bi bi-cup-straw"></i> Yogurt Production
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}" href="{{ route('reports.index') }}">
-                    <i class="bi bi-bar-chart-line"></i> Reports
-                </a>
-            </li>
-            @if(method_exists($user, 'isAdmin') ? $user->isAdmin() : true)
-            <li class="nav-item">
-                <hr class="my-2">
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}">
-                    <i class="bi bi-person-gear"></i> Users
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('branches.*') ? 'active' : '' }}" href="{{ route('branches.index') }}">
-                    <i class="bi bi-building"></i> Branches
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('product-categories.*') ? 'active' : '' }}" href="{{ route('product-categories.index') }}">
-                    <i class="bi bi-tags"></i> Categories
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('warehouses.*') ? 'active' : '' }}" href="{{ route('warehouses.index') }}">
-                    <i class="bi bi-building-gear"></i> Warehouses
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('configurations.*') ? 'active' : '' }}" href="{{ route('configurations.index') }}">
-                    <i class="bi bi-gear"></i> Configuration
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('audit-logs.*') ? 'active' : '' }}" href="{{ route('audit-logs.index') }}">
-                    <i class="bi bi-file-text"></i> Audit Logs
-                </a>
-            </li>
-            @endif
-        </ul>
+        <header class="pos-topbar-secondary">
+            <nav class="pos-top-nav">
+                <a class="pos-top-link {{ ($navKey === 'Dashboard') ? 'active' : '' }}"
+                   href="{{ route('nav.clear') }}">Home</a>
+                @foreach($topAreas as $area)
+                    @php
+                        $areaActive = $area['key'] === 'AllModules'
+                            ? \App\Services\NavigationCatalog::isUnderAllModules($navKey)
+                            : strcasecmp($navKey, $area['key']) === 0;
+                    @endphp
+                    @if($area['key'] === 'AllModules')
+                        <div class="pos-top-dropdown {{ $areaActive ? 'active' : '' }}" data-top-dropdown>
+                            <div class="pos-top-dropdown-trigger">
+                                <a class="pos-top-link {{ $areaActive ? 'active' : '' }}"
+                                   href="{{ route('nav.select', ['key' => $area['key']]) }}">{{ $area['title'] }}</a>
+                                <button type="button" class="pos-top-twistee" aria-expanded="false"
+                                        aria-label="Expand {{ $area['title'] }}" data-top-twistee>
+                                    <i class="bi bi-caret-right-fill" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                            <div class="pos-top-dropdown-menu" hidden>
+                                @foreach($area['links'] as $link)
+                                    @if(!empty($link['route']))
+                                        <a class="pos-top-dropdown-item" href="{{ route($link['route']) }}">{{ $link['title'] }}</a>
+                                    @endif
+                                @endforeach
+                            </div>
+                        </div>
+                    @else
+                        <a class="pos-top-link {{ $areaActive ? 'active' : '' }}"
+                           href="{{ route('nav.select', ['key' => $area['key']]) }}">{{ $area['title'] }}</a>
+                    @endif
+                @endforeach
+            </nav>
+        </header>
+        <div class="pos-gold-bar" aria-hidden="true"></div>
     </div>
-</nav>
 
-<main class="main-content">
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show no-print" role="alert">
-            {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <div class="pos-body">
+        <aside class="pos-sidebar" id="posSidebar">
+            <div class="pos-sidebar-toggle-row">
+                <button type="button" class="pos-sidebar-toggle" id="posSidebarToggle"
+                        aria-label="Collapse sidebar" title="Collapse sidebar" aria-expanded="true">
+                    <i class="bi bi-list" aria-hidden="true"></i>
+                </button>
+            </div>
+            <nav class="pos-nav" id="posSidebarNav">
+                <div class="pos-nav-label">{{ $currentArea['title'] ?? 'Dashboard' }}</div>
+
+                @foreach(($currentArea['links'] ?? []) as $link)
+                    @if(!empty($link['children']))
+                        @php
+                            $groupActive = collect($link['children'])->contains(function ($child) {
+                                return !empty($child['route']) && request()->routeIs($child['route']);
+                            });
+                            $groupGold = strcasecmp($link['title'] ?? '', 'Categories') === 0;
+                        @endphp
+                        <div class="pos-nav-group open {{ $groupActive ? 'active' : '' }}" data-side-nav-group>
+                            <button type="button"
+                                    class="pos-nav-link pos-nav-group-toggle {{ $groupGold ? 'pos-nav-gold' : '' }}"
+                                    aria-expanded="true" data-side-nav-twistee>
+                                @if(!empty($link['icon']))
+                                    <i class="bi {{ $link['icon'] }}" aria-hidden="true"></i>
+                                @endif
+                                <span>{{ $link['title'] }}</span>
+                                <i class="bi bi-caret-right-fill pos-nav-group-caret" aria-hidden="true"></i>
+                            </button>
+                            <div class="pos-nav-group-menu">
+                                @foreach($link['children'] as $child)
+                                    @if(empty($child['route']))
+                                        @continue
+                                    @endif
+                                    <a class="pos-nav-link pos-nav-sublink {{ request()->routeIs($child['route']) ? 'active' : '' }}"
+                                       href="{{ route($child['route']) }}">
+                                        <span>{{ $child['title'] }}</span>
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    @elseif(!empty($link['route']))
+                        <a class="pos-nav-link {{ request()->routeIs($link['route']) ? 'active' : '' }}"
+                           href="{{ route($link['route']) }}">
+                            <i class="bi {{ $link['icon'] ?? 'bi-circle' }}" aria-hidden="true"></i>
+                            <span>{{ $link['title'] }}</span>
+                        </a>
+                    @endif
+                @endforeach
+
+                <div class="pos-nav-permanent">
+                    @if(RouteFacade::has('modules.index'))
+                        <a class="pos-nav-link pos-nav-accent {{ request()->routeIs('modules.*') ? 'active' : '' }}"
+                           href="{{ route('modules.index') }}">
+                            <i class="bi bi-grid-3x3-gap" aria-hidden="true"></i>
+                            <span>Modules</span>
+                        </a>
+                    @endif
+                    @if(RouteFacade::has('setup.index'))
+                        <a class="pos-nav-link pos-nav-accent {{ request()->routeIs('setup.*') ? 'active' : '' }}"
+                           href="{{ route('setup.index') }}">
+                            <i class="bi bi-gear" aria-hidden="true"></i>
+                            <span>Setup</span>
+                        </a>
+                    @endif
+                </div>
+            </nav>
+        </aside>
+        <div class="pos-backdrop" id="posBackdrop"></div>
+
+        <div class="pos-main">
+            <main class="pos-content">
+                @if(session('success'))
+                    <div class="alert alert-success alert-dismissible fade show no-print" role="alert">
+                        {{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                @endif
+                @if(session('error'))
+                    <div class="alert alert-danger alert-dismissible fade show no-print" role="alert">
+                        {{ session('error') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                @endif
+                @yield('content')
+            </main>
         </div>
-    @endif
-
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show no-print" role="alert">
-            {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    @yield('content')
-</main>
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>

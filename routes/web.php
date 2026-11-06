@@ -26,6 +26,9 @@ use App\Http\Controllers\MonthlySupplyController;
 use App\Http\Controllers\YogurtProductionController;
 use App\Http\Controllers\ConfigurationsController;
 use App\Http\Controllers\AuditLogsController;
+use App\Http\Controllers\NavController;
+use App\Http\Controllers\ModulesController;
+use App\Http\Controllers\SetupController;
 use Illuminate\Support\Facades\Route;
 
 // Authentication Routes
@@ -39,6 +42,13 @@ Route::middleware(['auth'])->group(function () {
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard', [DashboardController::class, 'index']);
+
+    // Top / side navigation (POS_MT parity)
+    Route::get('/nav/select/{key}', [NavController::class, 'select'])->name('nav.select');
+    Route::get('/nav/clear', [NavController::class, 'clear'])->name('nav.clear');
+    Route::get('/modules', [ModulesController::class, 'index'])->name('modules.index');
+    Route::get('/setup', [SetupController::class, 'index'])->name('setup.index');
+
 
     // POS Routes
     Route::prefix('pos')->name('pos.')->group(function () {
@@ -155,3 +165,4 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{uid}', [AuditLogsController::class, 'show'])->name('show');
     });
 });
+
