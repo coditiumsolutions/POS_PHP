@@ -54,6 +54,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('pos')->name('pos.')->group(function () {
         Route::get('/', [POSController::class, 'index']);
         Route::get('/cash', [POSController::class, 'cash'])->name('cash');
+        Route::get('/barcode', [POSController::class, 'barcode'])->name('barcode');
         Route::get('/search-products', [POSController::class, 'searchProducts'])->name('search-products');
         Route::post('/create-sale', [POSController::class, 'createSale'])->name('create-sale');
         Route::get('/print-invoice/{uid}', [POSController::class, 'printInvoice'])->name('print-invoice');
@@ -165,4 +166,5 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{uid}', [AuditLogsController::class, 'show'])->name('show');
     });
 });
+
 

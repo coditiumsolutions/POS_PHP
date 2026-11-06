@@ -28,6 +28,19 @@ class POSController extends Controller
 
     public function cash()
     {
+        return $this->salePage('POS - Cash Sale', false);
+    }
+
+    /**
+     * Cash POS shell with barcode scanner field (POS_MT POSController::Barcode parity).
+     */
+    public function barcode()
+    {
+        return $this->salePage('POS Barcode', true);
+    }
+
+    private function salePage(string $pageTitle, bool $enableBarcodeScan)
+    {
         $products = Product::with(['category', 'unit'])
             ->where('is_active', true)
             ->orderBy('product_name')
@@ -43,7 +56,14 @@ class POSController extends Controller
 
         $paymentMethods = PaymentMethod::where('is_active', true)->get();
 
-        return view('pos.cash', compact('products', 'categories', 'customers', 'paymentMethods'));
+        return view('pos.cash', [
+            'products' => $products,
+            'categories' => $categories,
+            'customers' => $customers,
+            'paymentMethods' => $paymentMethods,
+            'pageTitle' => $pageTitle,
+            'enableBarcodeScan' => $enableBarcodeScan,
+        ]);
     }
 
     public function searchProducts(Request $request)
@@ -232,3 +252,4 @@ class POSController extends Controller
         return view('pos.print-invoice', compact('invoice'));
     }
 }
+
