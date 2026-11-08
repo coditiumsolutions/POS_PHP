@@ -21,6 +21,7 @@ class Product extends Model
         'barcode',
         'product_name',
         'category_uid',
+        'branch_uid',
         'unit_uid',
         'brand_name',
         'purchase_price',
@@ -53,6 +54,11 @@ class Product extends Model
     public function category()
     {
         return $this->belongsTo(ProductCategory::class, 'category_uid', 'uid');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_uid', 'uid');
     }
 
     public function unit()

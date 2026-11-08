@@ -3,17 +3,74 @@
 @section('title', $pageTitle ?? 'POS - Cash Sale')
 
 @section('content')
-@php $barcodeMode = !empty($enableBarcodeScan); @endphp
-<div class="container-fluid">
-    <h1 class="h4 mb-3 page-heading" style="font-size:1.5rem;">{{ $pageTitle ?? 'POS - Cash Sale' }}</h1>
+@php
+    $barcodeMode = !empty($enableBarcodeScan);
 
+    $itemIcon = function (?string $name): string {
+        $n = strtolower($name ?? '');
+        if (str_contains($n, 'milk') || str_contains($n, 'dairy') || str_contains($n, 'yogurt') || str_contains($n, 'yoghurt') || str_contains($n, 'cream')) return 'bi-cup-straw';
+        if (str_contains($n, 'butter') || str_contains($n, 'ghee') || str_contains($n, 'margarine')) return 'bi-droplet-fill';
+        if (str_contains($n, 'cheese') || str_contains($n, 'topping')) return 'bi-circle-half';
+        if (str_contains($n, 'bread') || str_contains($n, 'roti') || str_contains($n, 'bun') || str_contains($n, 'loaf') || str_contains($n, 'rusk')) return 'bi-basket2-fill';
+        if (str_contains($n, 'egg')) return 'bi-egg-fill';
+        if (str_contains($n, 'rice') || str_contains($n, 'flour') || str_contains($n, 'atta') || str_contains($n, 'grocery') || str_contains($n, 'pulse') || str_contains($n, 'dal')) return 'bi-bag-fill';
+        if (str_contains($n, 'oil') || str_contains($n, 'spice') || str_contains($n, 'salt') || str_contains($n, 'sugar') || str_contains($n, 'extra')) return 'bi-box-seam-fill';
+        if (str_contains($n, 'fruit') || str_contains($n, 'apple') || str_contains($n, 'banana') || str_contains($n, 'mango') || str_contains($n, 'orange')) return 'bi-apple';
+        if (str_contains($n, 'veg') || str_contains($n, 'salad') || str_contains($n, 'tomato') || str_contains($n, 'onion')) return 'bi-flower1';
+        if (str_contains($n, 'meat') || str_contains($n, 'mutton') || str_contains($n, 'beef') || str_contains($n, 'bbq') || str_contains($n, 'barbe')) return 'bi-fire';
+        if (str_contains($n, 'chicken') || str_contains($n, 'broast') || str_contains($n, 'crispy')) return 'bi-egg-fill';
+        if (str_contains($n, 'fish') || str_contains($n, 'seafood')) return 'bi-water';
+        if (str_contains($n, 'pizza') || str_contains($n, 'calzone')) return 'bi-pie-chart-fill';
+        if (str_contains($n, 'burger') || str_contains($n, 'sandwich')) return 'bi-layers-fill';
+        if (str_contains($n, 'fries') || str_contains($n, 'fry') || str_contains($n, 'chips')) return 'bi-grid-3x2-gap-fill';
+        if (str_contains($n, 'pasta') || str_contains($n, 'lasagna') || str_contains($n, 'noodle')) return 'bi-intersect';
+        if (str_contains($n, 'roll') || str_contains($n, 'wrap')) return 'bi-receipt';
+        if (str_contains($n, 'drink') || str_contains($n, 'juice') || str_contains($n, 'beverage') || str_contains($n, 'soda') || str_contains($n, 'water') || str_contains($n, 'tea') || str_contains($n, 'coffee')) return 'bi-cup-hot-fill';
+        if (str_contains($n, 'ice') || str_contains($n, 'dessert') || str_contains($n, 'sweet') || str_contains($n, 'cake')) return 'bi-snow2';
+        if (str_contains($n, 'bag')) return 'bi-bag-fill';
+        if (str_contains($n, 'deal') || str_contains($n, 'combo') || str_contains($n, 'offer')) return 'bi-tags-fill';
+        if (str_contains($n, 'deliver')) return 'bi-truck';
+        if (str_contains($n, 'dawn') || str_contains($n, 'brand')) return 'bi-buildings-fill';
+        return 'bi-box2-fill';
+    };
+
+    $iconTone = function (?string $name): string {
+        $tones = ['blue', 'orange', 'green', 'pink', 'teal', 'violet', 'amber', 'rose'];
+        $key = $name ?? '';
+        $hash = 0;
+        $len = strlen($key);
+        for ($i = 0; $i < $len; $i++) {
+            $hash = ($hash * 31 + ord($key[$i])) & 0x7fffffff;
+        }
+        return $tones[$hash % count($tones)];
+    };
+
+    $cardPrice = function ($price): string {
+        $price = (float) $price;
+        return fmod($price, 1.0) == 0.0
+            ? 'Rs: ' . number_format($price, 0)
+            : 'Rs: ' . number_format($price, 2);
+    };
+@endphp
+<div class="container-fluid">
     <div id="posAlert" class="alert d-none" role="alert"></div>
 
-    <div class="row pos-sale-layout {{ $barcodeMode ? 'pos-sale-layout--barcode-only' : '' }}" id="posSaleLayout">
+    @if(!empty($currentBranchName))
+        <div class="alert alert-light border mb-2 py-2">
+            Selling for branch: <strong>{{ $currentBranchName }}</strong>
+            <span class="text-muted small ms-1">(stock is deducted from this branch only)</span>
+        </div>
+    @else
+        <div class="alert alert-warning mb-2 py-2">
+            Your user has no matching branch. Assign a branch on the user record before selling.
+        </div>
+    @endif
+
+    <div class="pos-sale-split pos-sale-layout {{ $barcodeMode ? 'pos-sale-layout--barcode-only' : 'pos-sale-layout--cards' }}" id="posSaleLayout">
         <!-- Product / Barcode Selection -->
-        <div class="col-md-7 {{ $barcodeMode ? 'pos-sale-panel--barcode-only' : '' }}">
+        <div class="pos-sale-pane pos-sale-pane--items {{ $barcodeMode ? 'pos-sale-panel--barcode-only' : '' }}" id="posItemsPane">
             <div class="card h-100">
-                <div class="card-body">
+                <div class="card-body {{ $barcodeMode ? '' : 'pos-cash-catalog-body' }}">
                     @if($barcodeMode)
                         <div class="pos-barcode-center">
                             <div class="pos-barcode-scan-wrap">
@@ -48,85 +105,105 @@
                             <div class="p-3 text-muted">No active products found.</div>
                         @endif
                     @else
-                        <div class="mb-3">
-                            <input type="text" id="productSearch" class="form-control"
+                        <div class="mb-2">
+                            <input type="text" id="productSearch" class="form-control form-control-sm"
                                    placeholder="Search product by name, code, or barcode...">
                         </div>
 
-                        <div class="row" id="productCategories">
+                        @php $catTone = 0; @endphp
+                        <div class="pos-category-tiles mb-2" id="productCategories" role="group" aria-label="Product categories">
+                            <button type="button"
+                                    class="btn btn-sm pos-category-btn pos-cat-tone-{{ $catTone++ % 12 }} active category-btn"
+                                    data-category="">
+                                <span class="pos-cat-accent" aria-hidden="true"></span>
+                                <span class="pos-cat-icon" aria-hidden="true"><i class="bi bi-grid-fill"></i></span>
+                                <span class="pos-cat-label">All Items</span>
+                            </button>
                             @foreach($categories as $category)
-                            <div class="col-md-3 mb-2">
-                                <button type="button" class="btn btn-outline-primary btn-sm w-100 category-btn"
-                                        data-category="{{ $category->uid }}">
-                                    {{ $category->category_name }}
-                                </button>
-                            </div>
+                            <button type="button"
+                                    class="btn btn-sm pos-category-btn pos-cat-tone-{{ $catTone++ % 12 }} category-btn"
+                                    data-category="{{ $category->uid }}">
+                                <span class="pos-cat-accent" aria-hidden="true"></span>
+                                <span class="pos-cat-icon" aria-hidden="true"><i class="bi {{ $itemIcon($category->category_name) }}"></i></span>
+                                <span class="pos-cat-label">{{ $category->category_name }}</span>
+                            </button>
                             @endforeach
                         </div>
 
-                        <hr>
-
-                        <div id="productsGrid" class="row">
-                            @foreach($products->take(40) as $product)
-                            <div class="col-md-3 mb-2 product-item" data-category="{{ $product->category_uid }}">
-                                <button type="button" class="btn btn-outline-secondary btn-sm w-100 add-product"
+                        <div class="pos-product-cards" id="productsGrid">
+                            @foreach($products as $product)
+                                @php
+                                    $iconSource = trim(($product->product_name ?? '') . ' ' . (optional($product->category)->category_name ?? ''));
+                                @endphp
+                                <button type="button"
+                                        class="pos-item-card product-item add-product"
+                                        data-category="{{ $product->category_uid }}"
                                         data-uid="{{ $product->uid }}"
                                         data-name="{{ $product->product_name }}"
                                         data-barcode="{{ $product->barcode }}"
                                         data-code="{{ $product->product_code }}"
                                         data-price="{{ $product->sale_price }}"
                                         data-tax="{{ $product->tax_percent }}"
-                                        data-discount="{{ $product->discount_percent }}">
-                                    <small>{{ $product->product_name }}</small><br>
-                                    <strong>Rs. {{ number_format($product->sale_price, 2) }}</strong>
+                                        data-discount="{{ $product->discount_percent }}"
+                                        title="{{ $product->product_code }}">
+                                    @if(!empty($product->image_path))
+                                        <img class="pos-item-card-photo" src="{{ $product->image_path }}" alt="">
+                                    @else
+                                        <span class="pos-icon-tile pos-icon-tile--lg pos-icon-tone-{{ $iconTone($iconSource) }}" aria-hidden="true">
+                                            <i class="bi {{ $itemIcon($iconSource) }}"></i>
+                                        </span>
+                                    @endif
+                                    <span class="pos-item-card-name">{{ $product->product_name }}</span>
+                                    <span class="pos-item-card-price">{{ $cardPrice($product->sale_price) }}</span>
                                 </button>
-                            </div>
                             @endforeach
                         </div>
+                        @if($products->isEmpty())
+                            <div class="p-3 text-muted">No active products found.</div>
+                        @endif
                     @endif
                 </div>
             </div>
         </div>
 
+        <div class="pos-sale-splitter"
+             id="posSaleSplitter"
+             role="separator"
+             aria-orientation="vertical"
+             aria-label="Resize items and basket"
+             tabindex="0"
+             title="Drag to resize"></div>
+
         <!-- Cart Section -->
-        <div class="col-md-5">
+        <div class="pos-sale-pane pos-sale-pane--basket" id="posBasketPane">
             <div class="card h-100">
                 <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label">Customer</label>
-                        <select id="customerSelect" class="form-select">
-                            <option value="">Walk-in Customer</option>
-                            @foreach($customers as $customer)
-                            <option value="{{ $customer->uid }}">{{ $customer->customer_name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    <input type="hidden" id="cashPaymentMethodUid" value="{{ $cashPaymentMethodUid }}">
 
-                    <div class="mb-3">
-                        <label class="form-label">Payment Method</label>
-                        <select id="paymentMethodSelect" class="form-select" required>
-                            @foreach($paymentMethods as $method)
-                            <option value="{{ $method->uid }}">{{ $method->payment_method_name }}</option>
-                            @endforeach
-                        </select>
+                    <div class="d-grid gap-2 mb-3">
+                        <button type="button" id="completeSaleBtn" class="btn btn-success btn-lg">
+                            <i class="bi bi-check-circle"></i> Complete Sale
+                        </button>
+                        <button type="button" id="clearCartBtn" class="btn btn-outline-danger">
+                            <i class="bi bi-x-circle"></i> Clear Cart
+                        </button>
                     </div>
 
                     <hr>
 
                     <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
-                        <table class="table table-sm" id="cartTable">
+                        <table class="table table-sm align-middle" id="cartTable">
                             <thead>
                                 <tr>
                                     <th>Product</th>
-                                    <th width="60">Qty</th>
-                                    <th width="80">Price</th>
-                                    <th width="80">Total</th>
+                                    <th width="120" class="text-center">Qty</th>
+                                    <th width="80" class="text-end">Total</th>
                                     <th width="30"></th>
                                 </tr>
                             </thead>
                             <tbody id="cartItems">
                                 <tr id="emptyCart">
-                                    <td colspan="5" class="text-center text-muted">Cart is empty</td>
+                                    <td colspan="4" class="text-center text-muted">Cart is empty</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -151,20 +228,11 @@
                         <div class="col-6 text-end"><h5 id="totalDisplay">Rs. 0.00</h5></div>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-0">
                         <label class="form-label">Customer Given Amount</label>
                         <input type="number" id="customerGivenAmount" class="form-control"
                                placeholder="0.00" step="0.01">
                         <small class="text-muted">Change: <span id="changeAmount">Rs. 0.00</span></small>
-                    </div>
-
-                    <div class="d-grid gap-2">
-                        <button type="button" id="completeSaleBtn" class="btn btn-success btn-lg">
-                            <i class="bi bi-check-circle"></i> Complete Sale
-                        </button>
-                        <button type="button" id="clearCartBtn" class="btn btn-outline-danger">
-                            <i class="bi bi-x-circle"></i> Clear Cart
-                        </button>
                     </div>
                 </div>
             </div>
@@ -177,6 +245,7 @@
 <script>
 let cart = [];
 const barcodeMode = {{ $barcodeMode ? 'true' : 'false' }};
+const cashPaymentMethodUid = @json($cashPaymentMethodUid);
 
 function showAlert(type, message) {
     const el = document.getElementById('posAlert');
@@ -204,34 +273,113 @@ function addProductToCart(product) {
     updateCart();
 }
 
+function initPosSaleSplitter() {
+    const layout = document.getElementById('posSaleLayout');
+    const itemsPane = document.getElementById('posItemsPane');
+    const basketPane = document.getElementById('posBasketPane');
+    const splitter = document.getElementById('posSaleSplitter');
+    if (!layout || !itemsPane || !basketPane || !splitter) return;
+
+    const STORAGE_KEY = 'posCashSplitPct';
+    const MIN_PCT = 28;
+    const MAX_PCT = 78;
+
+    function applySplit(itemsPct) {
+        const pct = Math.min(MAX_PCT, Math.max(MIN_PCT, Number(itemsPct) || 58));
+        itemsPane.style.flex = '0 0 ' + pct + '%';
+        basketPane.style.flex = '1 1 0';
+        layout.style.setProperty('--pos-split-items', pct + '%');
+        splitter.setAttribute('aria-valuenow', String(Math.round(pct)));
+        try { localStorage.setItem(STORAGE_KEY, String(pct)); } catch (e) {}
+    }
+
+    const saved = parseFloat(localStorage.getItem(STORAGE_KEY) || '');
+    applySplit(Number.isFinite(saved) ? saved : 58);
+
+    let dragging = false;
+
+    function splitFromClientX(clientX) {
+        const rect = layout.getBoundingClientRect();
+        if (rect.width <= 0) return;
+        const splitterWidth = splitter.offsetWidth || 8;
+        const pct = ((clientX - rect.left - splitterWidth / 2) / rect.width) * 100;
+        applySplit(pct);
+    }
+
+    splitter.addEventListener('pointerdown', function (e) {
+        if (window.matchMedia('(max-width: 767.98px)').matches) return;
+        dragging = true;
+        splitter.setPointerCapture(e.pointerId);
+        layout.classList.add('is-resizing');
+        e.preventDefault();
+    });
+
+    splitter.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        splitFromClientX(e.clientX);
+    });
+
+    function endDrag(e) {
+        if (!dragging) return;
+        dragging = false;
+        layout.classList.remove('is-resizing');
+        try { splitter.releasePointerCapture(e.pointerId); } catch (err) {}
+    }
+
+    splitter.addEventListener('pointerup', endDrag);
+    splitter.addEventListener('pointercancel', endDrag);
+
+    splitter.addEventListener('keydown', function (e) {
+        const current = parseFloat(localStorage.getItem(STORAGE_KEY) || '58') || 58;
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            applySplit(current - 2);
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            applySplit(current + 2);
+        } else if (e.key === 'Home') {
+            e.preventDefault();
+            applySplit(58);
+        }
+    });
+
+    splitter.setAttribute('aria-valuemin', String(MIN_PCT));
+    splitter.setAttribute('aria-valuemax', String(MAX_PCT));
+}
+
 $(document).ready(function() {
+    initPosSaleSplitter();
+
     if (!barcodeMode) {
         $('#productSearch').on('keyup', function() {
             const search = $(this).val().toLowerCase();
+            const activeCategory = String($('.category-btn.active').data('category') || '');
             $('.product-item').each(function() {
-                const btn = $(this).find('.add-product');
-                const name = String(btn.data('name') || '').toLowerCase();
-                const code = String(btn.data('code') || '').toLowerCase();
-                const barcode = String(btn.data('barcode') || '').toLowerCase();
-                if (name.includes(search) || code.includes(search) || barcode.includes(search)) {
-                    $(this).show();
-                } else {
-                    $(this).hide();
-                }
+                const name = String($(this).data('name') || '').toLowerCase();
+                const code = String($(this).data('code') || '').toLowerCase();
+                const barcode = String($(this).data('barcode') || '').toLowerCase();
+                const category = String($(this).data('category') || '');
+                const matchesSearch = !search || name.includes(search) || code.includes(search) || barcode.includes(search);
+                const matchesCategory = !activeCategory || category === activeCategory;
+                $(this).toggle(matchesSearch && matchesCategory);
             });
         });
 
         $('.category-btn').on('click', function() {
-            const categoryUid = $(this).data('category');
-            $('.product-item').each(function() {
-                if ($(this).data('category') == categoryUid) {
-                    $(this).show();
-                } else {
-                    $(this).hide();
-                }
-            });
+            const categoryUid = String($(this).data('category') || '');
             $('.category-btn').removeClass('active');
             $(this).addClass('active');
+
+            const search = String($('#productSearch').val() || '').toLowerCase();
+            $('.product-item').each(function() {
+                const name = String($(this).data('name') || '').toLowerCase();
+                const code = String($(this).data('code') || '').toLowerCase();
+                const barcode = String($(this).data('barcode') || '').toLowerCase();
+                const category = String($(this).data('category') || '');
+                const matchesSearch = !search || name.includes(search) || code.includes(search) || barcode.includes(search);
+                const matchesCategory = !categoryUid || category === categoryUid;
+                $(this).toggle(matchesSearch && matchesCategory);
+            });
         });
 
         $(document).on('click', '.add-product', function() {
@@ -251,7 +399,27 @@ $(document).ready(function() {
         if (qty > 0) {
             cart[index].quantity = qty;
             updateCart();
+        } else {
+            $(this).val(cart[index].quantity);
         }
+    });
+
+    $(document).on('click', '.qty-minus', function() {
+        const index = $(this).data('index');
+        if (!cart[index]) return;
+        if (cart[index].quantity <= 1) {
+            cart.splice(index, 1);
+        } else {
+            cart[index].quantity -= 1;
+        }
+        updateCart();
+    });
+
+    $(document).on('click', '.qty-plus', function() {
+        const index = $(this).data('index');
+        if (!cart[index]) return;
+        cart[index].quantity += 1;
+        updateCart();
     });
 
     $(document).on('click', '.remove-item', function() {
@@ -280,9 +448,8 @@ $(document).ready(function() {
             return;
         }
 
-        const paymentMethodUid = $('#paymentMethodSelect').val();
-        if (!paymentMethodUid) {
-            alert('Please select a payment method!');
+        if (!cashPaymentMethodUid) {
+            alert('Cash payment method is not configured.');
             return;
         }
 
@@ -292,8 +459,8 @@ $(document).ready(function() {
         const total = parseFloat($('#totalDisplay').text().replace('Rs. ', '').replace(',', '')) || 0;
 
         const saleData = {
-            customer_uid: $('#customerSelect').val() || null,
-            payment_method_uid: paymentMethodUid,
+            customer_uid: null,
+            payment_method_uid: cashPaymentMethodUid,
             items: cart.map(item => ({
                 product_uid: item.uid,
                 quantity: item.quantity,
@@ -322,7 +489,6 @@ $(document).ready(function() {
                     alert('Sale completed successfully! Invoice: ' + response.invoice_no);
                     cart = [];
                     updateCart();
-                    $('#customerSelect').val('');
                     $('#customerGivenAmount').val('');
                     $('#changeAmount').text('Rs. 0.00');
                     if (confirm('Print invoice?')) {
@@ -503,12 +669,17 @@ $(document).ready(function() {
     }
 });
 
+function formatCartPrice(price) {
+    const n = Number(price) || 0;
+    return Number.isInteger(n) ? String(n) : n.toFixed(2);
+}
+
 function updateCart() {
     const tbody = $('#cartItems');
     tbody.empty();
 
     if (cart.length === 0) {
-        tbody.append('<tr id="emptyCart"><td colspan="5" class="text-center text-muted">Cart is empty</td></tr>');
+        tbody.append('<tr id="emptyCart"><td colspan="4" class="text-center text-muted">Cart is empty</td></tr>');
         $('#subtotalDisplay').text('Rs. 0.00');
         $('#discountDisplay').text('Rs. 0.00');
         $('#taxDisplay').text('Rs. 0.00');
@@ -531,14 +702,20 @@ function updateCart() {
         totalDiscount += discount;
         totalTax += tax;
 
+        const label = `${item.name} ${formatCartPrice(item.price)}`;
         const row = `
             <tr>
-                <td><small>${item.name}</small></td>
-                <td><input type="number" class="form-control form-control-sm qty-input" value="${item.quantity}"
-                           min="0.001" step="0.001" data-index="${index}"></td>
-                <td><small>Rs. ${item.price.toFixed(2)}</small></td>
-                <td><small>Rs. ${itemTotal.toFixed(2)}</small></td>
-                <td><button class="btn btn-sm btn-danger remove-item" data-index="${index}">×</button></td>
+                <td><span class="pos-cart-item-name">${label}</span></td>
+                <td>
+                    <div class="pos-qty-stepper">
+                        <button type="button" class="btn btn-sm btn-outline-secondary qty-minus" data-index="${index}" aria-label="Decrease quantity">−</button>
+                        <input type="number" class="form-control form-control-sm qty-input" value="${item.quantity}"
+                               min="1" step="1" data-index="${index}">
+                        <button type="button" class="btn btn-sm btn-outline-secondary qty-plus" data-index="${index}" aria-label="Increase quantity">+</button>
+                    </div>
+                </td>
+                <td class="text-end"><small>Rs. ${itemTotal.toFixed(2)}</small></td>
+                <td><button type="button" class="btn btn-sm btn-danger remove-item" data-index="${index}">×</button></td>
             </tr>
         `;
         tbody.append(row);

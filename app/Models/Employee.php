@@ -29,4 +29,14 @@ class Employee extends Model
         'created_date',
         'updated_date',
     ];
+
+    public function getEmployeeNameAttribute(): string
+    {
+        return (string) ($this->attributes['full_name'] ?? '');
+    }
+
+    public function setEmployeeNameAttribute($value): void
+    {
+        $this->attributes['full_name'] = $value;
+    }
 }

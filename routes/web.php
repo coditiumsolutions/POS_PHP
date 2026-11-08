@@ -79,6 +79,13 @@ Route::middleware(['auth'])->group(function () {
 
     // Inventory
     Route::get('/inventories', [InventoriesController::class, 'index'])->name('inventories.index');
+    Route::get('/inventories/print', [InventoriesController::class, 'printBalance'])->name('inventories.print');
+    Route::get('/inventories/create', [InventoriesController::class, 'create'])->name('inventories.create');
+    Route::post('/inventories', [InventoriesController::class, 'store'])->name('inventories.store');
+    Route::get('/inventories/{uid}', [InventoriesController::class, 'show'])->name('inventories.show');
+    Route::get('/inventories/{uid}/edit', [InventoriesController::class, 'edit'])->name('inventories.edit');
+    Route::put('/inventories/{uid}', [InventoriesController::class, 'update'])->name('inventories.update');
+    Route::delete('/inventories/{uid}', [InventoriesController::class, 'destroy'])->name('inventories.destroy');
 
     // Expenses
     Route::resource('expenses', ExpensesController::class);
@@ -86,6 +93,12 @@ Route::middleware(['auth'])->group(function () {
     // Reports
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/', [ReportsController::class, 'index'])->name('index');
+        Route::get('/sales-items', [ReportsController::class, 'salesItems'])->name('sales-items');
+        Route::get('/daily', [ReportsController::class, 'daily'])->name('daily');
+        Route::get('/payments', [ReportsController::class, 'payments'])->name('payments');
+        Route::get('/vendor-payments', [ReportsController::class, 'vendorPayments'])->name('vendor-payments');
+        Route::get('/terminal', [ReportsController::class, 'terminal'])->name('terminal');
+        Route::get('/financial', [ReportsController::class, 'financial'])->name('financial');
         Route::get('/sales', [ReportsController::class, 'sales'])->name('sales');
         Route::get('/purchases', [ReportsController::class, 'purchases'])->name('purchases');
         Route::get('/expenses', [ReportsController::class, 'expenses'])->name('expenses');
@@ -128,6 +141,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('warehouses', WarehousesController::class);
 
     // Employees & Payroll
+    Route::get('/employees/salary-payments', [EmployeesController::class, 'salaryPayments'])->name('employees.salary-payments');
     Route::resource('employees', EmployeesController::class);
     Route::get('/employees/{uid}/payroll', [EmployeesController::class, 'payroll'])->name('employees.payroll');
     Route::post('/employees/payment', [EmployeesController::class, 'storePayment'])->name('employees.store-payment');

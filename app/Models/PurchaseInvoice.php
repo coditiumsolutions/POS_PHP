@@ -35,6 +35,8 @@ class PurchaseInvoice extends Model
         'payment_status',
         'invoice_status',
         'remarks',
+        'created_date',
+        'updated_date',
     ];
 
     protected $casts = [

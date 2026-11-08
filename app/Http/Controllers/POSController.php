@@ -3,13 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use App\Models\Customer;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceDetail;
 use App\Models\Inventory;
 use App\Models\InventoryTransaction;
 use App\Models\PaymentMethod;
 use App\Models\ProductCategory;
+use App\Support\CurrentBranch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -41,45 +41,57 @@ class POSController extends Controller
 
     private function salePage(string $pageTitle, bool $enableBarcodeScan)
     {
-        $products = Product::with(['category', 'unit'])
-            ->where('is_active', true)
-            ->orderBy('product_name')
-            ->get();
+        $branchUid = CurrentBranch::uid();
+        $branchName = CurrentBranch::name() ?: (Auth::user()->branch ?? null);
+
+        $productsQuery = Product::with(['category', 'unit', 'branch'])
+            ->where('is_active', true);
+
+        // POS shows only products for the logged-in user's branch.
+        if ($branchUid) {
+            $productsQuery->where('branch_uid', $branchUid);
+        }
+
+        $products = $productsQuery->orderBy('product_name')->get();
 
         $categories = ProductCategory::where('is_active', true)
             ->orderBy('category_name')
             ->get();
 
-        $customers = Customer::where('is_active', true)
-            ->orderBy('customer_name')
-            ->get();
-
-        $paymentMethods = PaymentMethod::where('is_active', true)->get();
+        // Cash POS always settles as Cash / Walk-in (no customer or payment dropdowns).
+        $cashPaymentMethod = PaymentMethod::where('is_active', true)
+            ->whereRaw('LOWER(payment_method_name) = ?', ['cash'])
+            ->orderBy('uid')
+            ->first()
+            ?? PaymentMethod::where('is_active', true)->orderBy('uid')->first();
 
         return view('pos.cash', [
             'products' => $products,
             'categories' => $categories,
-            'customers' => $customers,
-            'paymentMethods' => $paymentMethods,
+            'cashPaymentMethodUid' => $cashPaymentMethod?->uid,
             'pageTitle' => $pageTitle,
             'enableBarcodeScan' => $enableBarcodeScan,
+            'currentBranchName' => $branchName,
+            'currentBranchUid' => $branchUid,
         ]);
     }
 
     public function searchProducts(Request $request)
     {
         $search = $request->get('q', '');
-        
+        $branchUid = CurrentBranch::uid();
+
         $products = Product::with(['category', 'unit'])
             ->where('is_active', true)
-            ->where(function($query) use ($search) {
+            ->when($branchUid, fn ($q) => $q->where('branch_uid', $branchUid))
+            ->where(function ($query) use ($search) {
                 $query->where('product_name', 'like', "%{$search}%")
                     ->orWhere('product_code', 'like', "%{$search}%")
                     ->orWhere('barcode', 'like', "%{$search}%");
             })
             ->limit(50)
             ->get()
-            ->map(function($product) {
+            ->map(function ($product) {
                 return [
                     'uid' => $product->uid,
                     'product_code' => $product->product_code,
@@ -119,13 +131,15 @@ class POSController extends Controller
         DB::beginTransaction();
         try {
             $user = Auth::user();
-            
+            $branchUid = CurrentBranch::requireUid($user);
+            $branchName = CurrentBranch::name($user) ?: $user->branch;
+
             $invoiceNo = $this->generateInvoiceNo();
 
             $paidAmount = $validated['paid_amount'];
             $netAmount = $validated['net_amount'];
             $balanceAmount = $netAmount - $paidAmount;
-            
+
             $customerGivenAmount = $validated['customer_given_amount'] ?? null;
             $changeGivenAmount = $customerGivenAmount ? ($customerGivenAmount - $netAmount) : null;
 
@@ -135,7 +149,7 @@ class POSController extends Controller
                 'customer_uid' => $validated['customer_uid'] ?? null,
                 'user_uid' => $user->uid,
                 'user_name' => $user->user_name,
-                'branch' => $user->branch,
+                'branch' => $branchName,
                 'terminal' => $user->terminal_name,
                 'payment_method_uid' => $validated['payment_method_uid'],
                 'sub_total' => $validated['sub_total'],
@@ -157,7 +171,14 @@ class POSController extends Controller
                 $unitPrice = $item['unit_price'];
                 $discountPercent = $item['discount_percent'] ?? 0;
                 $taxPercent = $item['tax_percent'] ?? 0;
-                
+
+                $product = Product::find($item['product_uid']);
+                if ($product && $product->branch_uid && (int) $product->branch_uid !== (int) $branchUid) {
+                    throw new \RuntimeException(
+                        'Product "' . $product->product_name . '" belongs to another branch and cannot be sold here.'
+                    );
+                }
+
                 $lineTotal = $quantity * $unitPrice;
                 $discountAmount = $lineTotal * ($discountPercent / 100);
                 $taxableAmount = $lineTotal - $discountAmount;
@@ -176,7 +197,8 @@ class POSController extends Controller
                     'total_amount' => $totalAmount,
                 ]);
 
-                $this->updateInventory($item['product_uid'], -$quantity, $invoiceNo);
+                // Deduct stock from the logged-in branch inventory only.
+                $this->updateInventory($item['product_uid'], -$quantity, $invoiceNo, $branchUid);
             }
 
             DB::commit();
@@ -214,32 +236,45 @@ class POSController extends Controller
         return "SI{$date}" . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
     }
 
-    private function updateInventory($productUid, $quantity, $referenceNo)
+    private function updateInventory($productUid, $quantity, $referenceNo, $branchUid)
     {
-        $inventory = Inventory::where('product_uid', $productUid)
-            ->whereNull('warehouse_uid')
-            ->first();
+        $inventory = Inventory::findForProductBranch((int) $productUid, (int) $branchUid);
 
         if ($inventory) {
-            $inventory->quantity_in_stock += $quantity;
-            $inventory->quantity_available += $quantity;
+            $inventory->quantity_in_stock = (float) $inventory->quantity_in_stock + $quantity;
+            $inventory->quantity_available = (float) $inventory->quantity_available + $quantity;
+            if ($quantity < 0) {
+                $inventory->quantity_out = (float) ($inventory->quantity_out ?? 0) + abs($quantity);
+            } else {
+                $inventory->quantity_in = (float) ($inventory->quantity_in ?? 0) + $quantity;
+            }
             $inventory->updated_date = now();
             $inventory->save();
         } else {
+            $startQty = $quantity; // may be negative for first sale without prior stock
             Inventory::create([
                 'product_uid' => $productUid,
-                'quantity_in_stock' => max(0, $quantity),
-                'quantity_available' => max(0, $quantity),
+                'branch_uid' => $branchUid,
+                'warehouse_uid' => null,
+                'quantity_in_stock' => $startQty,
+                'quantity_available' => $startQty,
+                'quantity_reserved' => 0,
+                'quantity_in' => $quantity > 0 ? $quantity : 0,
+                'quantity_out' => $quantity < 0 ? abs($quantity) : 0,
                 'updated_date' => now(),
             ]);
         }
 
         InventoryTransaction::create([
             'product_uid' => $productUid,
+            'warehouse_uid' => null,
             'transaction_type' => $quantity < 0 ? 'Sale' : 'Return',
             'reference_no' => $referenceNo,
             'transaction_date' => now(),
             'quantity' => abs($quantity),
+            'quantity_in' => $quantity > 0 ? abs($quantity) : 0,
+            'quantity_out' => $quantity < 0 ? abs($quantity) : 0,
+            'user_uid' => Auth::id(),
             'created_date' => now(),
         ]);
     }

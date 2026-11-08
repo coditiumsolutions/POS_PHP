@@ -66,13 +66,11 @@ class NavigationCatalog
             [
                 'key' => 'Employees',
                 'title' => 'Employees',
-                'links' => array_values(array_filter([
+                'links' => [
                     self::link('All Employees', 'Employees', 'index', ['icon' => 'bi-people', 'route' => 'employees.index']),
                     self::link('Add Employee', 'Employees', 'create', ['icon' => 'bi-person-plus', 'route' => 'employees.create']),
-                    Route::has('employee-payments.index')
-                        ? self::link('Salary Payments', 'EmployeePayments', 'index', ['icon' => 'bi-cash-coin', 'route' => 'employee-payments.index'])
-                        : self::link('Salary Payments', 'Employees', 'index', ['icon' => 'bi-cash-coin', 'route' => 'employees.index']),
-                ])),
+                    self::link('Salary Payments', 'Employees', 'salaryPayments', ['icon' => 'bi-cash-coin', 'route' => 'employees.salary-payments']),
+                ],
             ],
             [
                 'key' => 'Adjustments',
@@ -94,7 +92,7 @@ class NavigationCatalog
                     self::link('Sales', 'SalesInvoices', 'index', ['icon' => 'bi-receipt', 'route' => 'sales-invoices.index']),
                     self::link('Expenses', 'Expenses', 'index', ['icon' => 'bi-credit-card', 'route' => 'expenses.index']),
                     self::link('Employees', 'Employees', 'index', ['icon' => 'bi-person-badge', 'route' => 'employees.index']),
-                    self::link('Reports', 'Reports', 'index', ['icon' => 'bi-graph-up', 'route' => Route::has('reports.sales') ? 'reports.sales' : 'reports.index']),
+                    self::link('Reports', 'Reports', 'index', ['icon' => 'bi-graph-up', 'route' => 'reports.index']),
                 ],
             ],
         ];
@@ -115,19 +113,13 @@ class NavigationCatalog
                 'key' => 'Products',
                 'title' => 'Products',
                 'links' => [
-                    self::link('Categories', null, 'index', [
+                    self::link('All Categories', 'ProductCategories', 'index', [
                         'icon' => 'bi-tags',
-                        'children' => [
-                            self::link('Add Category', 'ProductCategories', 'create', ['route' => 'product-categories.create', 'icon' => '']),
-                            self::link('Categories', 'ProductCategories', 'index', ['route' => 'product-categories.index', 'icon' => '']),
-                        ],
+                        'route' => 'product-categories.index',
                     ]),
-                    self::link('Products', null, 'index', [
+                    self::link('All Products', 'Products', 'index', [
                         'icon' => 'bi-box-seam',
-                        'children' => [
-                            self::link('Add Product', 'Products', 'create', ['route' => 'products.create', 'icon' => '']),
-                            self::link('All Products', 'Products', 'index', ['route' => 'products.index', 'icon' => '']),
-                        ],
+                        'route' => 'products.index',
                     ]),
                 ],
             ],
@@ -150,14 +142,23 @@ class NavigationCatalog
             'Reports' => [
                 'key' => 'Reports',
                 'title' => 'Reports',
-                'links' => array_values(array_filter([
-                    self::link('Sales Report', 'Reports', 'sales', ['icon' => 'bi-graph-up-arrow', 'route' => 'reports.sales']),
-                    self::link('Purchases Report', 'Reports', 'purchases', ['icon' => 'bi-cart-plus', 'route' => 'reports.purchases']),
-                    self::link('Inventory Report', 'Reports', 'inventory', ['icon' => 'bi-boxes', 'route' => 'reports.inventory']),
-                    self::link('Financial Summary', 'Reports', 'expenses', ['icon' => 'bi-cash-stack', 'route' => 'reports.expenses']),
-                    self::link('Branch Report', 'Reports', 'branch', ['icon' => 'bi-building', 'route' => 'reports.branch']),
-                    self::link('User Report', 'Reports', 'user', ['icon' => 'bi-person', 'route' => 'reports.user']),
-                ])),
+                'links' => [
+                    self::link('Sales Item', 'Reports', 'salesItems', ['icon' => 'bi-basket', 'route' => 'reports.sales-items']),
+                    self::link('Daily Report', 'Reports', 'daily', ['icon' => 'bi-calendar-day', 'route' => 'reports.daily']),
+                    self::link('Payment Report', 'Reports', 'payments', ['icon' => 'bi-credit-card', 'route' => 'reports.payments']),
+                    self::link('Vendor Payments', 'Reports', 'vendorPayments', ['icon' => 'bi-wallet2', 'route' => 'reports.vendor-payments']),
+                    self::link('Terminal Report', 'Reports', 'terminal', ['icon' => 'bi-display', 'route' => 'reports.terminal']),
+                    self::link('Financial Report', 'Reports', 'financial', ['icon' => 'bi-cash-stack', 'route' => 'reports.financial']),
+                ],
+            ],
+            'Employees' => [
+                'key' => 'Employees',
+                'title' => 'Employees',
+                'links' => [
+                    self::link('All Employees', 'Employees', 'index', ['icon' => 'bi-people', 'route' => 'employees.index']),
+                    self::link('Add Employee', 'Employees', 'create', ['icon' => 'bi-person-plus', 'route' => 'employees.create']),
+                    self::link('Salary Payments', 'Employees', 'salaryPayments', ['icon' => 'bi-cash-coin', 'route' => 'employees.salary-payments']),
+                ],
             ],
             'Inventories' => [
                 'key' => 'Inventories',
@@ -252,6 +253,7 @@ class NavigationCatalog
             'yogurt-production' => 'Purchases',
             'sales-invoices' => 'SalesInvoice',
             'reports' => 'Reports',
+            'employees' => 'Employees',
             'inventories' => 'Inventories',
             'stock-adjustments' => 'Inventories',
             'expenses' => 'Expenses',
@@ -283,7 +285,7 @@ class NavigationCatalog
     public static function inferKeyFromRequest(): ?string
     {
         $name = request()->route()?->getName() ?? '';
-        if ($name === 'dashboard' || $name === '') {
+        if ($name === 'dashboard' || $name === '' || $name === 'nav.clear') {
             return 'Dashboard';
         }
         if (str_starts_with($name, 'pos.')) {
@@ -322,6 +324,38 @@ class NavigationCatalog
         if (str_starts_with($name, 'monthly-supply.')) {
             return 'POS';
         }
+        if (str_starts_with($name, 'modules.') || str_starts_with($name, 'setup.')) {
+            return session(self::SessionKey) ?: 'AllModules';
+        }
         return session(self::SessionKey);
+    }
+
+    /**
+     * Resolve which sidebar area to show.
+     * - Products / Reports / Employees pages always use their own sidebars.
+     * - While All Modules is selected, keep the All Modules module list.
+     */
+    public static function resolveCurrentKey(): string
+    {
+        $sessionKey = session(self::SessionKey);
+        $routeName = request()->route()?->getName() ?? '';
+
+        if (str_starts_with($routeName, 'products.') || str_starts_with($routeName, 'product-categories.')) {
+            return 'Products';
+        }
+
+        if (str_starts_with($routeName, 'reports.')) {
+            return 'Reports';
+        }
+
+        if (str_starts_with($routeName, 'employees.')) {
+            return 'Employees';
+        }
+
+        if ($sessionKey && strcasecmp($sessionKey, 'AllModules') === 0) {
+            return 'AllModules';
+        }
+
+        return self::inferKeyFromRequest() ?: ($sessionKey ?: 'Dashboard');
     }
 }

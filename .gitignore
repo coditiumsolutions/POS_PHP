@@ -17,3 +17,11 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+
+# Local data import dumps / scripts (may contain production data)
+/_data_import/
+
+# Editor / backup leftovers
+*.bak
+*.bak_*
+*.blade.php.bak*

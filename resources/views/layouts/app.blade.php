@@ -17,7 +17,7 @@
     use Illuminate\Support\Facades\Route as RouteFacade;
 
     $user = Auth::user();
-    $navKey = session(NavigationCatalog::SessionKey) ?: NavigationCatalog::inferKeyFromRequest() ?: 'Dashboard';
+    $navKey = NavigationCatalog::resolveCurrentKey();
     $currentArea = NavigationCatalog::findArea($navKey);
     $topAreas = NavigationCatalog::topAreas();
 @endphp
@@ -64,7 +64,8 @@
                             <div class="pos-top-dropdown-menu" hidden>
                                 @foreach($area['links'] as $link)
                                     @if(!empty($link['route']))
-                                        <a class="pos-top-dropdown-item" href="{{ route($link['route']) }}">{{ $link['title'] }}</a>
+                                        <a class="pos-top-dropdown-item"
+                                           href="{{ route('nav.select', ['key' => 'AllModules', 'to' => $link['route']]) }}">{{ $link['title'] }}</a>
                                     @endif
                                 @endforeach
                             </div>

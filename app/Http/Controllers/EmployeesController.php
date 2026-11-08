@@ -18,8 +18,35 @@ class EmployeesController extends Controller
 
     public function index()
     {
-        $employees = Employee::orderBy('employee_name')->paginate(50);
+        $employees = Employee::orderBy('full_name')->paginate(50);
         return view('employees.index', compact('employees'));
+    }
+
+    public function salaryPayments(Request $request)
+    {
+        $search = trim((string) $request->get('search', ''));
+
+        $query = EmployeePayment::query()
+            ->leftJoin('employees', 'employee_payments.employee_uid', '=', 'employees.uid')
+            ->select(
+                'employee_payments.*',
+                'employees.employee_code',
+                'employees.full_name as employee_name'
+            )
+            ->orderByDesc('employee_payments.payment_date')
+            ->orderByDesc('employee_payments.uid');
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('employees.full_name', 'like', "%{$search}%")
+                    ->orWhere('employees.employee_code', 'like', "%{$search}%")
+                    ->orWhere('employee_payments.payment_no', 'like', "%{$search}%");
+            });
+        }
+
+        $payments = $query->paginate(50)->withQueryString();
+
+        return view('employees.salary-payments', compact('payments', 'search'));
     }
 
     public function create()
@@ -32,6 +59,7 @@ class EmployeesController extends Controller
         $validated = $request->validate([
             'employee_code' => 'required|string|max:50|unique:employees',
             'employee_name' => 'required|string|max:200',
+            'full_name' => 'nullable|string|max:200',
             'mobile_no' => 'nullable|string|max:30',
             'email' => 'nullable|email|max:150',
             'address' => 'nullable|string|max:500',
@@ -41,6 +69,8 @@ class EmployeesController extends Controller
             'is_active' => 'boolean',
         ]);
 
+        $validated['full_name'] = $validated['full_name'] ?? $validated['employee_name'];
+        unset($validated['employee_name']);
         $validated['created_date'] = now();
         Employee::create($validated);
 
@@ -70,6 +100,7 @@ class EmployeesController extends Controller
         $validated = $request->validate([
             'employee_code' => 'required|string|max:50|unique:employees,employee_code,' . $uid . ',uid',
             'employee_name' => 'required|string|max:200',
+            'full_name' => 'nullable|string|max:200',
             'mobile_no' => 'nullable|string|max:30',
             'email' => 'nullable|email|max:150',
             'address' => 'nullable|string|max:500',
@@ -79,6 +110,8 @@ class EmployeesController extends Controller
             'is_active' => 'boolean',
         ]);
 
+        $validated['full_name'] = $validated['full_name'] ?? $validated['employee_name'];
+        unset($validated['employee_name']);
         $validated['updated_date'] = now();
         $employee->update($validated);
 
@@ -103,19 +136,33 @@ class EmployeesController extends Controller
         $validated = $request->validate([
             'employee_uid' => 'required|exists:employees,uid',
             'payment_date' => 'required|date',
-            'salary_month' => 'required|string|max:20',
+            'salary_month' => 'nullable|string|max:20',
+            'month_year' => 'nullable|string|max:20',
             'basic_salary' => 'required|numeric|min:0',
             'allowances_amount' => 'nullable|numeric|min:0',
             'deductions_amount' => 'nullable|numeric|min:0',
-            'net_amount' => 'required|numeric|min:0',
-            'payment_mode' => 'required|string|max:50',
+            'total_allowances' => 'nullable|numeric|min:0',
+            'total_deductions' => 'nullable|numeric|min:0',
+            'net_amount' => 'nullable|numeric|min:0',
+            'net_salary' => 'nullable|numeric|min:0',
+            'payment_mode' => 'nullable|string|max:50',
             'remarks' => 'nullable|string|max:500',
         ]);
 
-        $validated['payment_no'] = $this->generatePaymentNo();
-        $validated['created_date'] = now();
+        $payload = [
+            'employee_uid' => $validated['employee_uid'],
+            'payment_date' => $validated['payment_date'],
+            'month_year' => $validated['month_year'] ?? $validated['salary_month'] ?? now()->format('Y-m'),
+            'basic_salary' => $validated['basic_salary'],
+            'total_allowances' => $validated['total_allowances'] ?? $validated['allowances_amount'] ?? 0,
+            'total_deductions' => $validated['total_deductions'] ?? $validated['deductions_amount'] ?? 0,
+            'net_salary' => $validated['net_salary'] ?? $validated['net_amount'] ?? 0,
+            'remarks' => $validated['remarks'] ?? null,
+            'payment_no' => $this->generatePaymentNo(),
+            'created_date' => now(),
+        ];
 
-        EmployeePayment::create($validated);
+        EmployeePayment::create($payload);
 
         return redirect()->route('employees.show', $validated['employee_uid'])
             ->with('success', 'Salary payment recorded successfully!');

@@ -19,8 +19,9 @@ class ProductCategoriesController extends Controller
             'category_code' => 'required|string|max:50|unique:product_categories',
             'category_name' => 'required|string|max:150',
             'description' => 'nullable|string|max:500',
-            'is_active' => 'boolean',
+            'is_active' => 'nullable|boolean',
         ]);
+        $validated['is_active'] = $request->boolean('is_active');
         $validated['created_date'] = now();
         ProductCategory::create($validated);
         return redirect()->route('product-categories.index')->with('success', 'Category created!');
@@ -37,8 +38,9 @@ class ProductCategoriesController extends Controller
             'category_code' => 'required|string|max:50|unique:product_categories,category_code,' . $uid . ',uid',
             'category_name' => 'required|string|max:150',
             'description' => 'nullable|string|max:500',
-            'is_active' => 'boolean',
+            'is_active' => 'nullable|boolean',
         ]);
+        $validated['is_active'] = $request->boolean('is_active');
         $validated['updated_date'] = now();
         $category->update($validated);
         return redirect()->route('product-categories.index')->with('success', 'Category updated!');
