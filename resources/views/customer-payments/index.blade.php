@@ -20,10 +20,12 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}" placeholder="From">
+                    <input type="text" name="date_from" class="form-control report-date-input"
+                           value="{{ $dateFromDisplay ?? '' }}" placeholder="24-Nov-2026" autocomplete="off">
                 </div>
                 <div class="col-md-2">
-                    <input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}" placeholder="To">
+                    <input type="text" name="date_to" class="form-control report-date-input"
+                           value="{{ $dateToDisplay ?? '' }}" placeholder="24-Nov-2026" autocomplete="off">
                 </div>
                 <div class="col-md-2">
                     <button type="submit" class="btn btn-secondary"><i class="fas fa-search"></i> Filter</button>
@@ -67,3 +69,16 @@
     </div>
 </div>
 @endsection
+
+@push('styles')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+@endpush
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    flatpickr('.report-date-input', { dateFormat: 'd-M-Y', allowInput: true, disableMobile: true });
+});
+</script>
+@endpush

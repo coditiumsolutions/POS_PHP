@@ -81,7 +81,8 @@ class SalesInvoicesController extends Controller
 
     public function show($uid)
     {
-        $invoice = SalesInvoice::with(['customer', 'details.product', 'paymentMethod', 'user', 'branch'])
+        // Do not eager-load relation named "branch" — it conflicts with the branch string column.
+        $invoice = SalesInvoice::with(['customer', 'details.product', 'paymentMethod', 'user'])
             ->findOrFail($uid);
 
         return view('sales-invoices.show', compact('invoice'));
@@ -100,17 +101,24 @@ class SalesInvoicesController extends Controller
         DB::beginTransaction();
         try {
             $invoice = SalesInvoice::with('details')->findOrFail($uid);
-            
-            // Reverse inventory
+
+            if (strcasecmp((string) $invoice->invoice_status, 'Cancelled') === 0) {
+                return redirect()->route('sales-invoices.show', $uid)
+                    ->with('error', 'Invoice is already cancelled.');
+            }
+
             foreach ($invoice->details as $detail) {
                 $this->updateInventory($detail->product_uid, $detail->quantity, "Void-{$invoice->invoice_no}");
             }
 
             $invoice->invoice_status = 'Cancelled';
+            $invoice->payment_status = 'Cancelled';
+            $invoice->updated_date = now();
             $invoice->save();
 
             DB::commit();
-            return redirect()->route('sales-invoices.index')->with('success', 'Invoice cancelled successfully!');
+            return redirect()->route('sales-invoices.show', $uid)
+                ->with('success', 'Invoice deleted/cancelled successfully. Stock restored.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Error cancelling invoice: ' . $e->getMessage());

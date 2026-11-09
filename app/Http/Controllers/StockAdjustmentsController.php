@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Warehouse;
 use App\Models\Inventory;
 use App\Models\InventoryTransaction;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -52,7 +53,7 @@ class StockAdjustmentsController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'adjustment_date' => 'required|date',
+            'adjustment_date' => 'required|string',
             'warehouse_uid' => 'nullable|exists:warehouses,uid',
             'adjustment_type' => 'required|in:Increase,Decrease,Physical Count',
             'items' => 'required|array|min:1',
@@ -62,16 +63,21 @@ class StockAdjustmentsController extends Controller
             'remarks' => 'nullable|string|max:500',
         ]);
 
+        $adjustmentDate = $this->parseDate($validated['adjustment_date']);
+        if (!$adjustmentDate) {
+            return back()->withInput()->withErrors(['adjustment_date' => 'Adjustment date is invalid. Use format like 10-Nov-2026.']);
+        }
+
         DB::beginTransaction();
         try {
             $adjustment = StockAdjustment::create([
                 'adjustment_no' => $this->generateAdjustmentNo(),
-                'adjustment_date' => $validated['adjustment_date'],
-                'warehouse_uid' => $validated['warehouse_uid'],
+                'adjustment_date' => $adjustmentDate,
+                'warehouse_uid' => $validated['warehouse_uid'] ?? null,
                 'user_uid' => Auth::id(),
                 'adjustment_type' => $validated['adjustment_type'],
                 'status' => 'Completed',
-                'remarks' => $validated['remarks'],
+                'remarks' => $validated['remarks'] ?? null,
                 'created_date' => now(),
             ]);
 
@@ -175,5 +181,25 @@ class StockAdjustmentsController extends Controller
             'remarks' => "Stock {$type}",
             'created_date' => now(),
         ]);
+    }
+
+    private function parseDate(?string $value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        foreach (['d-M-Y', 'Y-m-d', 'd/m/Y', 'd-m-Y'] as $format) {
+            try {
+                return Carbon::createFromFormat($format, $value)->format('Y-m-d');
+            } catch (\Throwable $e) {
+            }
+        }
+
+        try {
+            return Carbon::parse($value)->format('Y-m-d');
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 }

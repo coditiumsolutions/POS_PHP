@@ -29,6 +29,8 @@ class Vendor extends Model
         'opening_balance',
         'credit_limit',
         'is_active',
+        'created_date',
+        'updated_date',
     ];
 
     protected $casts = [

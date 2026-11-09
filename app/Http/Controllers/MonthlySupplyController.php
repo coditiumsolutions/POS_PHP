@@ -156,6 +156,7 @@ class MonthlySupplyController extends Controller
                         'balance_amount' => $lineTotal,
                         'payment_status' => 'Pending',
                         'invoice_status' => 'Completed',
+                        'pos_type' => 'Monthly',
                         'remarks' => 'Auto-generated from Monthly Supply',
                         'created_date' => now(),
                     ]);

@@ -162,6 +162,7 @@ class POSController extends Controller
                 'balance_amount' => $balanceAmount,
                 'payment_status' => $balanceAmount > 0 ? 'Partial' : 'Paid',
                 'invoice_status' => 'Completed',
+                'pos_type' => 'Walk-In',
                 'remarks' => $validated['remarks'] ?? null,
                 'created_date' => now(),
             ]);

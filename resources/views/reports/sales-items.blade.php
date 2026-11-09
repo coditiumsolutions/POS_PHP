@@ -6,6 +6,13 @@
 <div class="container-fluid">
     <h1 class="h3 page-heading mb-3">Sales Item</h1>
 
+    @if(session('success'))
+        <div class="alert alert-success">{{ session('success') }}</div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger">{{ session('error') }}</div>
+    @endif
+
     <form method="GET" class="row g-2 align-items-end mb-3" id="salesItemsFilterForm">
         <div class="col-md-3 col-lg-2">
             <label class="form-label mb-0 small" for="branch">Branch</label>
@@ -44,17 +51,23 @@
         </div>
     </form>
 
-    <div class="mb-2 text-muted small">
-        Lines: {{ $summary['lines'] }} |
-        Qty: {{ number_format($summary['qty'], 3) }} |
-        Amount: Rs. {{ number_format($summary['amount'], 2) }}
-        @if($branch !== '')
-            | Branch: <strong>{{ $branch }}</strong>
-        @endif
+    <div class="d-flex flex-wrap gap-3 align-items-center mb-3">
+        <div class="text-muted small">
+            Lines: {{ $summary['lines'] }} |
+            Qty: {{ number_format($summary['qty'], 3) }}
+            @if($branch !== '')
+                | Branch: <strong>{{ $branch }}</strong>
+            @endif
+            <span class="ms-2">Double-click a row to open the invoice</span>
+        </div>
+        <div class="ms-auto border rounded bg-white px-3 py-2">
+            <span class="text-muted small me-2">Total</span>
+            <strong class="fs-5">Rs. {{ number_format($summary['amount'], 2) }}</strong>
+        </div>
     </div>
 
     <div class="table-responsive bg-white border rounded">
-        <table class="table table-sm table-hover mb-0">
+        <table class="table table-sm table-hover mb-0" id="salesItemsTable">
             <thead>
                 <tr>
                     <th>Invoice</th>
@@ -68,7 +81,9 @@
             </thead>
             <tbody>
                 @forelse($items as $row)
-                    <tr>
+                    <tr class="sales-item-row"
+                        style="cursor: pointer;"
+                        data-invoice-url="{{ route('sales-invoices.show', $row->sales_invoice_uid) }}">
                         <td>{{ $row->invoice_no }}</td>
                         <td>{{ \Illuminate\Support\Carbon::parse($row->invoice_date)->format('d-M-Y') }}</td>
                         <td>{{ $row->branch ?: '—' }}</td>
@@ -81,7 +96,24 @@
                     <tr><td colspan="7" class="text-center text-muted py-4">No sales items found</td></tr>
                 @endforelse
             </tbody>
+            @if($items->total() > 0)
+                <tfoot>
+                    <tr class="table-light fw-semibold">
+                        <td colspan="4" class="text-end">Grand Total (all pages)</td>
+                        <td class="text-end">{{ number_format($summary['qty'], 3) }}</td>
+                        <td></td>
+                        <td class="text-end">Rs. {{ number_format($summary['amount'], 2) }}</td>
+                    </tr>
+                </tfoot>
+            @endif
         </table>
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+        <div class="text-muted small">
+            Showing {{ $items->firstItem() ?? 0 }}–{{ $items->lastItem() ?? 0 }} of {{ $items->total() }}
+        </div>
+        <div>{{ $items->links() }}</div>
     </div>
 </div>
 @endsection
@@ -98,6 +130,18 @@ document.addEventListener('DOMContentLoaded', function () {
         dateFormat: 'd-M-Y',
         allowInput: true,
         disableMobile: true
+    });
+
+    document.querySelectorAll('.sales-item-row').forEach(function (row) {
+        row.addEventListener('dblclick', function (e) {
+            if (e.target.closest('form') || e.target.closest('button') || e.target.closest('a')) {
+                return;
+            }
+            const url = row.getAttribute('data-invoice-url');
+            if (url) {
+                window.location.href = url;
+            }
+        });
     });
 });
 </script>

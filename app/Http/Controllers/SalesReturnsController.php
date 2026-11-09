@@ -7,6 +7,7 @@ use App\Models\SalesInvoiceDetail;
 use App\Models\Product;
 use App\Models\Inventory;
 use App\Models\InventoryTransaction;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -68,7 +69,7 @@ class SalesReturnsController extends Controller
         $validated = $request->validate([
             'original_invoice_uid' => 'nullable|exists:sales_invoices,uid',
             'customer_uid' => 'nullable|exists:customers,uid',
-            'return_date' => 'required|date',
+            'return_date' => 'required|string',
             'items' => 'required|array|min:1',
             'items.*.product_uid' => 'required|exists:products,uid',
             'items.*.quantity' => 'required|numeric|min:0.001',
@@ -82,6 +83,11 @@ class SalesReturnsController extends Controller
             'remarks' => 'nullable|string|max:500',
         ]);
 
+        $returnDate = $this->parseDate($validated['return_date']);
+        if (!$returnDate) {
+            return back()->withInput()->withErrors(['return_date' => 'Return date is invalid. Use format like 10-Nov-2026.']);
+        }
+
         DB::beginTransaction();
         try {
             $user = Auth::user();
@@ -90,7 +96,7 @@ class SalesReturnsController extends Controller
             // Create return invoice
             $return = SalesInvoice::create([
                 'invoice_no' => $returnNo,
-                'invoice_date' => $validated['return_date'],
+                'invoice_date' => $returnDate,
                 'customer_uid' => $validated['customer_uid'],
                 'user_uid' => $user->uid,
                 'user_name' => $user->user_name,
@@ -204,5 +210,25 @@ class SalesReturnsController extends Controller
             'quantity' => $quantity,
             'created_date' => now(),
         ]);
+    }
+
+    private function parseDate(?string $value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        foreach (['d-M-Y', 'Y-m-d', 'd/m/Y', 'd-m-Y'] as $format) {
+            try {
+                return Carbon::createFromFormat($format, $value)->format('Y-m-d');
+            } catch (\Throwable $e) {
+            }
+        }
+
+        try {
+            return Carbon::parse($value)->format('Y-m-d');
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 }

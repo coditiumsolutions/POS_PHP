@@ -1,14 +1,61 @@
 @extends('layouts.app')
+@section('title', 'Purchase Report')
 @section('content')
-<div class="container-fluid py-4">
-    <h2>Purchase Report</h2>
-    <div class="card"><div class="card-body">
-        <form method="GET" class="row g-3 mb-4">
-            <div class="col-md-3"><label>From Date</label><input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}"></div>
-            <div class="col-md-3"><label>To Date</label><input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}"></div>
-            <div class="col-md-2 d-flex align-items-end"><button type="submit" class="btn btn-secondary"><i class="fas fa-search"></i> Filter</button></div>
-        </form>
-        <p class="text-muted">Purchase report data will display here</p>
-    </div></div>
+<div class="container-fluid">
+    <h1 class="h3 page-heading mb-3">Purchase Report</h1>
+    <form method="GET" class="row g-2 align-items-end mb-3">
+        <div class="col-auto">
+            <label class="form-label mb-0 small" for="date_from">From</label>
+            <input type="text" id="date_from" name="date_from" class="form-control form-control-sm report-date-input"
+                   value="{{ $dateFromDisplay }}" placeholder="24-Nov-2026" autocomplete="off">
+        </div>
+        <div class="col-auto">
+            <label class="form-label mb-0 small" for="date_to">To</label>
+            <input type="text" id="date_to" name="date_to" class="form-control form-control-sm report-date-input"
+                   value="{{ $dateToDisplay }}" placeholder="24-Nov-2026" autocomplete="off">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-sm btn-secondary">Filter</button>
+        </div>
+    </form>
+    <div class="text-muted small mb-2">
+        Invoices: {{ $summary['total_invoices'] }} |
+        Amount: Rs. {{ number_format((float) $summary['total_amount'], 2) }}
+    </div>
+    <div class="table-responsive bg-white border rounded">
+        <table class="table table-sm table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Invoice</th>
+                    <th>Date</th>
+                    <th>Vendor</th>
+                    <th class="text-end">Net</th>
+                    <th class="text-end">Paid</th>
+                    <th class="text-end">Balance</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($invoices as $inv)
+                    <tr>
+                        <td>{{ $inv->purchase_invoice_no ?? $inv->invoice_no }}</td>
+                        <td>{{ optional($inv->purchase_date)->format('d-M-Y') }}</td>
+                        <td>{{ optional($inv->vendor)->vendor_name ?: '—' }}</td>
+                        <td class="text-end">{{ number_format((float) $inv->net_amount, 2) }}</td>
+                        <td class="text-end">{{ number_format((float) $inv->paid_amount, 2) }}</td>
+                        <td class="text-end">{{ number_format((float) $inv->balance_amount, 2) }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="6" class="text-center text-muted py-4">No purchases found</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
 </div>
 @endsection
+@push('styles')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+@endpush
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>document.addEventListener('DOMContentLoaded', function () { flatpickr('.report-date-input', { dateFormat: 'd-M-Y', allowInput: true, disableMobile: true }); });</script>
+@endpush

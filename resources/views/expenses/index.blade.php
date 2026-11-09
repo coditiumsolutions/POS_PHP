@@ -49,8 +49,14 @@
                             <td>{{ $expense->category->category_name }}</td>
                             <td>Rs. {{ number_format($expense->amount, 2) }}</td>
                             <td>{{ $expense->payment_mode }}</td>
-                            <td>
+                            <td class="text-nowrap">
                                 <a href="{{ route('expenses.edit', $expense->uid) }}" class="btn btn-sm btn-warning">Edit</a>
+                                <form method="POST" action="{{ route('expenses.destroy', $expense->uid) }}" class="d-inline"
+                                      onsubmit="return confirm('Delete expense {{ $expense->expense_no }}?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
                             </td>
                         </tr>
                         @empty

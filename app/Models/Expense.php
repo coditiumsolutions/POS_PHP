@@ -25,6 +25,8 @@ class Expense extends Model
         'amount',
         'payment_mode',
         'description',
+        'created_date',
+        'updated_date',
     ];
 
     protected $casts = [

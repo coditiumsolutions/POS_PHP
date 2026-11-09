@@ -39,6 +39,7 @@ class SalesInvoice extends Model
         'balance_amount',
         'payment_status',
         'invoice_status',
+        'pos_type',
         'remarks',
     ];
 

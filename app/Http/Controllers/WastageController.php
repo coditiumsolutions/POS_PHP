@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\Inventory;
 use App\Models\InventoryTransaction;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -44,13 +45,18 @@ class WastageController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'wastage_date' => 'required|date',
+            'wastage_date' => 'required|string',
             'items' => 'required|array|min:1',
             'items.*.product_uid' => 'required|exists:products,uid',
             'items.*.quantity' => 'required|numeric|min:0.001',
             'items.*.reason' => 'required|string|max:200',
             'remarks' => 'nullable|string|max:500',
         ]);
+
+        $wastageDate = $this->parseDate($validated['wastage_date']);
+        if (!$wastageDate) {
+            return back()->withInput()->withErrors(['wastage_date' => 'Wastage date is invalid. Use format like 10-Nov-2026.']);
+        }
 
         DB::beginTransaction();
         try {
@@ -74,7 +80,7 @@ class WastageController extends Controller
                     'product_uid' => $item['product_uid'],
                     'transaction_type' => 'Wastage',
                     'reference_no' => $wastageNo,
-                    'transaction_date' => $validated['wastage_date'],
+                    'transaction_date' => $wastageDate,
                     'quantity' => -$item['quantity'], // Negative for deduction
                     'remarks' => $item['reason'],
                     'created_date' => now(),
@@ -110,5 +116,25 @@ class WastageController extends Controller
         }
 
         return "WS{$date}" . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function parseDate(?string $value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        foreach (['d-M-Y', 'Y-m-d', 'd/m/Y', 'd-m-Y'] as $format) {
+            try {
+                return Carbon::createFromFormat($format, $value)->format('Y-m-d');
+            } catch (\Throwable $e) {
+            }
+        }
+
+        try {
+            return Carbon::parse($value)->format('Y-m-d');
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 }

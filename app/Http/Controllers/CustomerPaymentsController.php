@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CustomerPayment;
 use App\Models\Customer;
 use App\Models\SalesInvoice;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -23,19 +24,24 @@ class CustomerPaymentsController extends Controller
             $query->where('customer_uid', $request->customer_uid);
         }
 
-        if ($request->filled('date_from')) {
-            $query->whereDate('payment_date', '>=', $request->date_from);
+        $dateFromDisplay = trim((string) $request->get('date_from', ''));
+        $dateToDisplay = trim((string) $request->get('date_to', ''));
+        $dateFrom = $this->parseDate($dateFromDisplay);
+        $dateTo = $this->parseDate($dateToDisplay);
+
+        if ($dateFrom) {
+            $query->whereDate('payment_date', '>=', $dateFrom);
         }
 
-        if ($request->filled('date_to')) {
-            $query->whereDate('payment_date', '<=', $request->date_to);
+        if ($dateTo) {
+            $query->whereDate('payment_date', '<=', $dateTo);
         }
 
-        $payments = $query->orderBy('payment_date', 'desc')->paginate(50);
+        $payments = $query->orderBy('payment_date', 'desc')->paginate(50)->withQueryString();
         $customers = Customer::where('is_active', true)->orderBy('customer_name')->get();
         $totalAmount = $query->sum('amount');
 
-        return view('customer-payments.index', compact('payments', 'customers', 'totalAmount'));
+        return view('customer-payments.index', compact('payments', 'customers', 'totalAmount', 'dateFromDisplay', 'dateToDisplay'));
     }
 
     public function create(Request $request)
@@ -61,7 +67,7 @@ class CustomerPaymentsController extends Controller
     {
         $validated = $request->validate([
             'customer_uid' => 'required|exists:customers,uid',
-            'payment_date' => 'required|date',
+            'payment_date' => 'required|string',
             'amount' => 'required|numeric|min:0.01',
             'payment_mode' => 'required|string|max:50',
             'reference_no' => 'nullable|string|max:100',
@@ -70,9 +76,19 @@ class CustomerPaymentsController extends Controller
             'apply_to_invoices.*' => 'numeric|min:0',
         ]);
 
+        try {
+            $paymentDate = \Carbon\Carbon::createFromFormat('d-M-Y', $validated['payment_date'])->format('Y-m-d');
+        } catch (\Throwable $e) {
+            try {
+                $paymentDate = \Carbon\Carbon::parse($validated['payment_date'])->format('Y-m-d');
+            } catch (\Throwable $e2) {
+                return back()->withInput()->withErrors(['payment_date' => 'Payment date is invalid. Use format like 10-Nov-2026.']);
+            }
+        }
+
         $payment = CustomerPayment::create([
             'payment_no' => $this->generatePaymentNo(),
-            'payment_date' => $validated['payment_date'],
+            'payment_date' => $paymentDate,
             'customer_uid' => $validated['customer_uid'],
             'user_uid' => Auth::id(),
             'amount' => $validated['amount'],
@@ -123,5 +139,26 @@ class CustomerPaymentsController extends Controller
         }
 
         return "CP{$date}" . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function parseDate(?string $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+
+        foreach (['d-M-Y', 'Y-m-d', 'd/m/Y', 'd-m-Y'] as $format) {
+            try {
+                return Carbon::createFromFormat($format, $value)->format('Y-m-d');
+            } catch (\Throwable $e) {
+            }
+        }
+
+        try {
+            return Carbon::parse($value)->format('Y-m-d');
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 }

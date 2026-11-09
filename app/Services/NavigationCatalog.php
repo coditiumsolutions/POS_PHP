@@ -104,10 +104,13 @@ class NavigationCatalog
             'Vendors' => [
                 'key' => 'Vendors',
                 'title' => 'Vendors',
-                'links' => [
+                'links' => array_values(array_filter([
+                    self::link('All Vendors', 'Vendors', 'index', ['icon' => 'bi-truck', 'route' => 'vendors.index']),
                     self::link('Add Vendor', 'Vendors', 'create', ['icon' => 'bi-plus-circle', 'route' => 'vendors.create']),
-                    self::link('All Vendor', 'Vendors', 'index', ['icon' => 'bi-truck', 'route' => 'vendors.index']),
-                ],
+                    Route::has('vendor-payments.index')
+                        ? self::link('Vendor Payments', 'VendorPayments', 'index', ['icon' => 'bi-wallet2', 'route' => 'vendor-payments.index'])
+                        : null,
+                ])),
             ],
             'Products' => [
                 'key' => 'Products',
@@ -300,7 +303,7 @@ class NavigationCatalog
         if (str_starts_with($name, 'sales-returns.') || str_starts_with($name, 'wastage.') || str_starts_with($name, 'stock-adjustments.')) {
             return 'Adjustments';
         }
-        if (str_starts_with($name, 'vendors.')) {
+        if (str_starts_with($name, 'vendors.') || str_starts_with($name, 'vendor-payments.')) {
             return 'Vendors';
         }
         if (str_starts_with($name, 'products.') || str_starts_with($name, 'product-categories.')) {
@@ -342,6 +345,10 @@ class NavigationCatalog
 
         if (str_starts_with($routeName, 'products.') || str_starts_with($routeName, 'product-categories.')) {
             return 'Products';
+        }
+
+        if (str_starts_with($routeName, 'vendors.') || str_starts_with($routeName, 'vendor-payments.')) {
+            return 'Vendors';
         }
 
         if (str_starts_with($routeName, 'reports.')) {

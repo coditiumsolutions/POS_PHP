@@ -51,10 +51,13 @@ class VendorsController extends Controller
             'ntn' => 'nullable|string|max:50',
             'opening_balance' => 'nullable|numeric',
             'credit_limit' => 'nullable|numeric',
-            'is_active' => 'boolean',
+            'is_active' => 'nullable|boolean',
         ]);
 
         $validated['vendor_code'] = $this->generateVendorCode();
+        $validated['is_active'] = $request->boolean('is_active', true);
+        $validated['opening_balance'] = $validated['opening_balance'] ?? 0;
+        $validated['credit_limit'] = $validated['credit_limit'] ?? 0;
         $validated['created_date'] = now();
         Vendor::create($validated);
 
@@ -83,9 +86,10 @@ class VendorsController extends Controller
             'ntn' => 'nullable|string|max:50',
             'opening_balance' => 'nullable|numeric',
             'credit_limit' => 'nullable|numeric',
-            'is_active' => 'boolean',
+            'is_active' => 'nullable|boolean',
         ]);
 
+        $validated['is_active'] = $request->boolean('is_active', true);
         $validated['updated_date'] = now();
         $vendor->update($validated);
 
@@ -94,10 +98,14 @@ class VendorsController extends Controller
 
     public function show($uid)
     {
-        $vendor = Vendor::with(['purchaseInvoices', 'payments'])->findOrFail($uid);
-        
-        $totalPurchases = $vendor->purchaseInvoices()->sum('net_amount');
-        $totalPaid = $vendor->purchaseInvoices()->sum('paid_amount');
+        $vendor = Vendor::with([
+            'purchaseInvoices' => fn ($q) => $q->orderByDesc('purchase_date')->limit(20),
+            'payments' => fn ($q) => $q->orderByDesc('payment_date')->limit(20),
+        ])->findOrFail($uid);
+
+        $totalPurchases = (float) $vendor->purchaseInvoices()->sum('net_amount');
+        $totalPaid = (float) $vendor->purchaseInvoices()->sum('paid_amount')
+            + (float) $vendor->payments()->sum('amount');
         $balance = $totalPurchases - $totalPaid;
 
         return view('vendors.show', compact('vendor', 'totalPurchases', 'totalPaid', 'balance'));
@@ -106,8 +114,16 @@ class VendorsController extends Controller
     public function destroy($uid)
     {
         $vendor = Vendor::findOrFail($uid);
-        $vendor->update(['is_active' => false]);
-        return redirect()->route('vendors.index')->with('success', 'Vendor deactivated successfully!');
+        $hasPurchases = $vendor->purchaseInvoices()->exists();
+
+        if ($hasPurchases) {
+            $vendor->update(['is_active' => false, 'updated_date' => now()]);
+            return redirect()->route('vendors.index')
+                ->with('success', 'Vendor has purchases, so it was deactivated instead of deleted.');
+        }
+
+        $vendor->delete();
+        return redirect()->route('vendors.index')->with('success', 'Vendor deleted successfully!');
     }
 
     private function generateVendorCode()

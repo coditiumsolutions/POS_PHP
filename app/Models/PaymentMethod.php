@@ -8,4 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 class PaymentMethod extends Model
 {
     use HasFactory;
+
+    protected $table = 'payment_methods';
+    protected $primaryKey = 'uid';
+    public $timestamps = false;
+    protected $guarded = ['uid'];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
 }

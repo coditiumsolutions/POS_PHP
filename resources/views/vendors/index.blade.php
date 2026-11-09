@@ -4,38 +4,47 @@
 
 @section('content')
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3">Vendors</h1>
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div>
+            <h1 class="h3 page-heading mb-1">Vendors</h1>
+            <p class="text-muted mb-0">Create, view, edit, and delete vendors.</p>
+        </div>
         <a href="{{ route('vendors.create') }}" class="btn btn-primary">
             <i class="bi bi-plus-circle"></i> Add Vendor
         </a>
     </div>
 
+    @if(session('success'))
+        <div class="alert alert-success">{{ session('success') }}</div>
+    @endif
+
     <div class="card">
         <div class="card-body">
-            <form method="GET" class="row g-3 mb-4">
-                <div class="col-md-6">
-                    <input type="text" name="search" class="form-control" 
-                           placeholder="Search by name, code, or mobile..." 
+            <form method="GET" action="{{ route('vendors.index') }}" class="row g-2 align-items-center mb-3">
+                <div class="col-md-5 col-lg-4">
+                    <input type="text" name="search" class="form-control"
+                           placeholder="Search by name, code, or mobile..."
                            value="{{ request('search') }}">
                 </div>
-                <div class="col-md-3">
+                <div class="col-auto">
                     <button type="submit" class="btn btn-secondary">Search</button>
-                    <a href="{{ route('vendors.index') }}" class="btn btn-outline-secondary">Clear</a>
+                    @if(request('search'))
+                        <a href="{{ route('vendors.index') }}" class="btn btn-outline-secondary">Clear</a>
+                    @endif
                 </div>
             </form>
 
             <div class="table-responsive">
-                <table class="table table-striped">
+                <table class="table table-hover align-middle mb-0">
                     <thead>
                         <tr>
                             <th>Code</th>
                             <th>Name</th>
-                            <th>Contact Person</th>
+                            <th>Contact</th>
                             <th>Mobile</th>
                             <th>City</th>
                             <th>Status</th>
-                            <th>Actions</th>
+                            <th class="text-nowrap">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -43,35 +52,37 @@
                         <tr>
                             <td>{{ $vendor->vendor_code }}</td>
                             <td>{{ $vendor->vendor_name }}</td>
-                            <td>{{ $vendor->contact_person }}</td>
-                            <td>{{ $vendor->mobile_no }}</td>
-                            <td>{{ $vendor->city }}</td>
+                            <td>{{ $vendor->contact_person ?: '—' }}</td>
+                            <td>{{ $vendor->mobile_no ?: '—' }}</td>
+                            <td>{{ $vendor->city ?: '—' }}</td>
                             <td>
-                                @if($vendor->is_active)
-                                    <span class="badge bg-success">Active</span>
-                                @else
-                                    <span class="badge bg-danger">Inactive</span>
-                                @endif
+                                <span class="badge bg-{{ $vendor->is_active ? 'success' : 'secondary' }}">
+                                    {{ $vendor->is_active ? 'Active' : 'Inactive' }}
+                                </span>
                             </td>
-                            <td>
-                                <a href="{{ route('vendors.show', $vendor->uid) }}" class="btn btn-sm btn-info">
-                                    <i class="bi bi-eye"></i> View
-                                </a>
-                                <a href="{{ route('vendors.edit', $vendor->uid) }}" class="btn btn-sm btn-warning">
-                                    <i class="bi bi-pencil"></i> Edit
-                                </a>
+                            <td class="text-nowrap">
+                                <a href="{{ route('vendors.show', $vendor->uid) }}" class="btn btn-sm btn-outline-secondary">View</a>
+                                <a href="{{ route('vendors.edit', $vendor->uid) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                <form method="POST" action="{{ route('vendors.destroy', $vendor->uid) }}" class="d-inline"
+                                      onsubmit="return confirm('Delete this vendor? If it has purchases it will be deactivated.');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" class="text-center">No vendors found</td>
+                            <td colspan="7" class="text-center py-4 text-muted">No vendors found</td>
                         </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
 
-            {{ $vendors->links() }}
+            <div class="mt-3 products-pagination">
+                {{ $vendors->links() }}
+            </div>
         </div>
     </div>
 </div>

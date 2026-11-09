@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\SalesInvoice;
 use App\Models\PurchaseInvoice;
 use App\Models\Expense;
+use App\Models\EmployeePayment;
 use App\Models\Product;
 use App\Models\Inventory;
 use App\Models\Customer;
@@ -42,8 +43,20 @@ class ReportsController extends Controller
             $query->where('s.branch', $branch);
         }
 
+        $summaryRow = (clone $query)
+            ->selectRaw('COUNT(*) as line_count, COALESCE(SUM(d.quantity), 0) as qty, COALESCE(SUM(d.total_amount), 0) as amount')
+            ->first();
+
+        $summary = [
+            'lines' => (int) ($summaryRow->line_count ?? 0),
+            'qty' => (float) ($summaryRow->qty ?? 0),
+            'amount' => (float) ($summaryRow->amount ?? 0),
+        ];
+
         $items = $query
             ->select(
+                'd.uid as detail_uid',
+                's.uid as sales_invoice_uid',
                 's.invoice_no',
                 's.invoice_date',
                 's.branch',
@@ -55,14 +68,8 @@ class ReportsController extends Controller
             )
             ->orderByDesc('s.invoice_date')
             ->orderBy('s.invoice_no')
-            ->limit(1000)
-            ->get();
-
-        $summary = [
-            'lines' => $items->count(),
-            'qty' => (float) $items->sum('quantity'),
-            'amount' => (float) $items->sum('total_amount'),
-        ];
+            ->paginate(50)
+            ->withQueryString();
 
         $branches = Branch::where('is_active', true)
             ->orderBy('branch_name')
@@ -118,12 +125,18 @@ class ReportsController extends Controller
     public function daily(Request $request)
     {
         $date = $request->get('date', now()->format('Y-m-d'));
+        $posType = trim((string) $request->get('pos_type', ''));
+        $allowedPosTypes = ['Walk-In', 'Credit', 'Monthly'];
 
-        $invoices = SalesInvoice::with('paymentMethod')
+        $query = SalesInvoice::with(['paymentMethod', 'customer'])
             ->whereDate('invoice_date', $date)
-            ->where('invoice_status', '!=', 'Cancelled')
-            ->orderBy('invoice_date')
-            ->get();
+            ->where('invoice_status', '!=', 'Cancelled');
+
+        if ($posType !== '' && in_array($posType, $allowedPosTypes, true)) {
+            $query->where('pos_type', $posType);
+        }
+
+        $invoices = $query->orderBy('invoice_date')->get();
 
         $summary = [
             'invoices' => $invoices->count(),
@@ -132,13 +145,12 @@ class ReportsController extends Controller
             'balance' => (float) $invoices->sum('balance_amount'),
         ];
 
-        return view('reports.daily', compact('invoices', 'summary', 'date'));
+        return view('reports.daily', compact('invoices', 'summary', 'date', 'posType', 'allowedPosTypes'));
     }
 
     public function payments(Request $request)
     {
-        $dateFrom = $request->get('date_from', now()->startOfMonth()->format('Y-m-d'));
-        $dateTo = $request->get('date_to', now()->format('Y-m-d'));
+        [$dateFrom, $dateTo, $dateFromDisplay, $dateToDisplay] = $this->reportDateRange($request);
 
         $rows = SalesInvoice::with('paymentMethod')
             ->whereDate('invoice_date', '>=', $dateFrom)
@@ -155,13 +167,12 @@ class ReportsController extends Controller
                 'amount' => (float) $group->sum('paid_amount'),
             ]);
 
-        return view('reports.payments', compact('rows', 'byMethod', 'dateFrom', 'dateTo'));
+        return view('reports.payments', compact('rows', 'byMethod', 'dateFrom', 'dateTo', 'dateFromDisplay', 'dateToDisplay'));
     }
 
     public function vendorPayments(Request $request)
     {
-        $dateFrom = $request->get('date_from', now()->startOfMonth()->format('Y-m-d'));
-        $dateTo = $request->get('date_to', now()->format('Y-m-d'));
+        [$dateFrom, $dateTo, $dateFromDisplay, $dateToDisplay] = $this->reportDateRange($request);
 
         $payments = DB::table('vendor_payments as vp')
             ->leftJoin('vendors as v', 'vp.vendor_uid', '=', 'v.uid')
@@ -182,35 +193,93 @@ class ReportsController extends Controller
 
         $total = (float) $payments->sum('amount');
 
-        return view('reports.vendor-payments', compact('payments', 'total', 'dateFrom', 'dateTo'));
+        return view('reports.vendor-payments', compact('payments', 'total', 'dateFrom', 'dateTo', 'dateFromDisplay', 'dateToDisplay'));
     }
 
     public function terminal(Request $request)
     {
-        $dateFrom = $request->get('date_from', now()->startOfMonth()->format('Y-m-d'));
-        $dateTo = $request->get('date_to', now()->format('Y-m-d'));
+        [$dateFrom, $dateTo, $dateFromDisplay, $dateToDisplay] = $this->reportDateRange($request);
 
-        $rows = SalesInvoice::query()
+        $branch = trim((string) $request->get('branch', ''));
+        $terminal = trim((string) $request->get('terminal', ''));
+        $userName = trim((string) $request->get('user_name', ''));
+
+        $baseQuery = SalesInvoice::query()
             ->whereDate('invoice_date', '>=', $dateFrom)
             ->whereDate('invoice_date', '<=', $dateTo)
-            ->where('invoice_status', '!=', 'Cancelled')
+            ->where('invoice_status', '!=', 'Cancelled');
+
+        if ($branch !== '') {
+            $baseQuery->where('branch', $branch);
+        }
+        if ($terminal !== '') {
+            $baseQuery->where('terminal', $terminal);
+        }
+        if ($userName !== '') {
+            $baseQuery->where('user_name', $userName);
+        }
+
+        $rows = (clone $baseQuery)
             ->select(
+                'branch',
                 'terminal',
+                'user_name',
                 DB::raw('COUNT(*) as invoice_count'),
                 DB::raw('SUM(net_amount) as total_amount'),
                 DB::raw('SUM(paid_amount) as total_paid')
             )
-            ->groupBy('terminal')
+            ->groupBy('branch', 'terminal', 'user_name')
+            ->orderBy('branch')
             ->orderBy('terminal')
+            ->orderBy('user_name')
             ->get();
 
-        return view('reports.terminal', compact('rows', 'dateFrom', 'dateTo'));
+        $branches = SalesInvoice::query()
+            ->whereNotNull('branch')
+            ->where('branch', '!=', '')
+            ->distinct()
+            ->orderBy('branch')
+            ->pluck('branch');
+
+        $terminals = SalesInvoice::query()
+            ->whereNotNull('terminal')
+            ->where('terminal', '!=', '')
+            ->distinct()
+            ->orderBy('terminal')
+            ->pluck('terminal');
+
+        $users = SalesInvoice::query()
+            ->whereNotNull('user_name')
+            ->where('user_name', '!=', '')
+            ->distinct()
+            ->orderBy('user_name')
+            ->pluck('user_name');
+
+        $summary = [
+            'invoices' => (int) $rows->sum('invoice_count'),
+            'sales' => (float) $rows->sum('total_amount'),
+            'paid' => (float) $rows->sum('total_paid'),
+        ];
+
+        return view('reports.terminal', compact(
+            'rows',
+            'summary',
+            'dateFrom',
+            'dateTo',
+            'dateFromDisplay',
+            'dateToDisplay',
+            'branches',
+            'terminals',
+            'users',
+            'branch',
+            'terminal',
+            'userName'
+        ));
     }
 
     public function financial(Request $request)
     {
-        $dateFrom = $request->get('date_from', now()->startOfMonth()->format('Y-m-d'));
-        $dateTo = $request->get('date_to', now()->format('Y-m-d'));
+        [$dateFrom, $dateTo, $dateFromDisplay, $dateToDisplay] = $this->reportDateRange($request);
 
         $sales = (float) SalesInvoice::whereDate('invoice_date', '>=', $dateFrom)
             ->whereDate('invoice_date', '<=', $dateTo)
@@ -226,21 +295,30 @@ class ReportsController extends Controller
             ->whereDate('expense_date', '<=', $dateTo)
             ->sum('amount');
 
+        $salaries = (float) EmployeePayment::whereDate('payment_date', '>=', $dateFrom)
+            ->whereDate('payment_date', '<=', $dateTo)
+            ->selectRaw('COALESCE(SUM(CASE WHEN COALESCE(amount, 0) > 0 THEN amount ELSE COALESCE(net_salary, 0) END), 0) as total')
+            ->value('total');
+
+        $gross = $sales - $purchases;
+        $totalOutflow = $expenses + $salaries;
+
         $summary = [
             'sales' => $sales,
             'purchases' => $purchases,
             'expenses' => $expenses,
-            'gross' => $sales - $purchases,
-            'net' => $sales - $purchases - $expenses,
+            'salaries' => $salaries,
+            'gross' => $gross,
+            'total_outflow' => $totalOutflow,
+            'net' => $gross - $totalOutflow,
         ];
 
-        return view('reports.financial', compact('summary', 'dateFrom', 'dateTo'));
+        return view('reports.financial', compact('summary', 'dateFrom', 'dateTo', 'dateFromDisplay', 'dateToDisplay'));
     }
 
     public function sales(Request $request)
     {
-        $dateFrom = $request->get('date_from', now()->startOfMonth()->format('Y-m-d'));
-        $dateTo = $request->get('date_to', now()->format('Y-m-d'));
+        [$dateFrom, $dateTo, $dateFromDisplay, $dateToDisplay] = $this->reportDateRange($request);
         $customerType = $request->get('customer_type');
 
         $query = SalesInvoice::with('customer')
@@ -274,13 +352,12 @@ class ReportsController extends Controller
             'total_balance' => $invoices->sum('balance_amount'),
         ];
 
-        return view('reports.sales', compact('invoices', 'summary', 'dateFrom', 'dateTo', 'customerType'));
+        return view('reports.sales', compact('invoices', 'summary', 'dateFrom', 'dateTo', 'dateFromDisplay', 'dateToDisplay', 'customerType'));
     }
 
     public function purchases(Request $request)
     {
-        $dateFrom = $request->get('date_from', now()->startOfMonth()->format('Y-m-d'));
-        $dateTo = $request->get('date_to', now()->format('Y-m-d'));
+        [$dateFrom, $dateTo, $dateFromDisplay, $dateToDisplay] = $this->reportDateRange($request);
 
         $invoices = PurchaseInvoice::with('vendor')
             ->whereDate('purchase_date', '>=', $dateFrom)
@@ -296,13 +373,12 @@ class ReportsController extends Controller
             'total_balance' => $invoices->sum('balance_amount'),
         ];
 
-        return view('reports.purchases', compact('invoices', 'summary', 'dateFrom', 'dateTo'));
+        return view('reports.purchases', compact('invoices', 'summary', 'dateFrom', 'dateTo', 'dateFromDisplay', 'dateToDisplay'));
     }
 
     public function expenses(Request $request)
     {
-        $dateFrom = $request->get('date_from', now()->startOfMonth()->format('Y-m-d'));
-        $dateTo = $request->get('date_to', now()->format('Y-m-d'));
+        [$dateFrom, $dateTo, $dateFromDisplay, $dateToDisplay] = $this->reportDateRange($request);
         $categoryUid = $request->get('category_uid');
 
         $query = Expense::with(['category', 'branch', 'user'])
@@ -321,7 +397,7 @@ class ReportsController extends Controller
             ->orderBy('category_name')
             ->get();
 
-        return view('reports.expenses', compact('expenses', 'totalAmount', 'dateFrom', 'dateTo', 'categories', 'categoryUid'));
+        return view('reports.expenses', compact('expenses', 'totalAmount', 'dateFrom', 'dateTo', 'dateFromDisplay', 'dateToDisplay', 'categories', 'categoryUid'));
     }
 
     public function inventory(Request $request)
@@ -365,8 +441,7 @@ class ReportsController extends Controller
 
     public function branch(Request $request)
     {
-        $dateFrom = $request->get('date_from', now()->startOfMonth()->format('Y-m-d'));
-        $dateTo = $request->get('date_to', now()->format('Y-m-d'));
+        [$dateFrom, $dateTo, $dateFromDisplay, $dateToDisplay] = $this->reportDateRange($request);
         $branch = $request->get('branch');
 
         $query = SalesInvoice::with('branch')
@@ -391,13 +466,12 @@ class ReportsController extends Controller
             ->orderBy('branch')
             ->pluck('branch');
 
-        return view('reports.branch', compact('sales', 'dateFrom', 'dateTo', 'branches', 'branch'));
+        return view('reports.branch', compact('sales', 'dateFrom', 'dateTo', 'dateFromDisplay', 'dateToDisplay', 'branches', 'branch'));
     }
 
     public function user(Request $request)
     {
-        $dateFrom = $request->get('date_from', now()->startOfMonth()->format('Y-m-d'));
-        $dateTo = $request->get('date_to', now()->format('Y-m-d'));
+        [$dateFrom, $dateTo, $dateFromDisplay, $dateToDisplay] = $this->reportDateRange($request);
         $userName = $request->get('user_name');
 
         $query = SalesInvoice::with('user')
@@ -420,6 +494,19 @@ class ReportsController extends Controller
             ->orderBy('user_name')
             ->pluck('user_name');
 
-        return view('reports.user', compact('sales', 'dateFrom', 'dateTo', 'users', 'userName'));
+        return view('reports.user', compact('sales', 'dateFrom', 'dateTo', 'dateFromDisplay', 'dateToDisplay', 'users', 'userName'));
+    }
+
+    private function reportDateRange(Request $request): array
+    {
+        $dateFrom = $this->parseReportDate($request->get('date_from'), now()->startOfMonth());
+        $dateTo = $this->parseReportDate($request->get('date_to'), now());
+
+        return [
+            $dateFrom,
+            $dateTo,
+            Carbon::parse($dateFrom)->format('d-M-Y'),
+            Carbon::parse($dateTo)->format('d-M-Y'),
+        ];
     }
 }

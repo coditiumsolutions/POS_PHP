@@ -144,7 +144,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/employees/salary-payments', [EmployeesController::class, 'salaryPayments'])->name('employees.salary-payments');
     Route::resource('employees', EmployeesController::class);
     Route::get('/employees/{uid}/payroll', [EmployeesController::class, 'payroll'])->name('employees.payroll');
+    Route::post('/employees/{uid}/allowances', [EmployeesController::class, 'storeAllowance'])->name('employees.store-allowance');
+    Route::delete('/employees/{uid}/allowances/{allowanceUid}', [EmployeesController::class, 'destroyAllowance'])->name('employees.destroy-allowance');
+    Route::post('/employees/{uid}/deductions', [EmployeesController::class, 'storeDeduction'])->name('employees.store-deduction');
+    Route::delete('/employees/{uid}/deductions/{deductionUid}', [EmployeesController::class, 'destroyDeduction'])->name('employees.destroy-deduction');
     Route::post('/employees/payment', [EmployeesController::class, 'storePayment'])->name('employees.store-payment');
+    Route::delete('/employees/{uid}/payments/{paymentUid}', [EmployeesController::class, 'destroyPayment'])->name('employees.destroy-payment');
     
     // Monthly Supply
     Route::prefix('monthly-supply')->name('monthly-supply.')->group(function () {
