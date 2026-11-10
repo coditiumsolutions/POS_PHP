@@ -194,8 +194,8 @@
     <div class="sheet">
         <div class="header">
             <div>
-                <h1>Sales Invoice</h1>
-                <div class="sub">{{ $invoice->getAttributes()['branch'] ?? 'Coditium POS' }}</div>
+                <h1>LipSip Mart</h1>
+                <div class="sub">0339-5470747</div>
             </div>
             <div class="badge">{{ $invoice->invoice_status ?: 'Completed' }} · {{ $invoice->payment_status ?: 'Paid' }}</div>
         </div>

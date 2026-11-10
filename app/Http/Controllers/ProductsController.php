@@ -7,7 +7,9 @@ use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductUnit;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ProductsController extends Controller
@@ -185,8 +187,47 @@ class ProductsController extends Controller
     public function destroy($uid)
     {
         $product = Product::findOrFail($uid);
-        $product->update(['is_active' => false]);
+        $label = trim(($product->product_code ? $product->product_code . ' - ' : '') . ($product->product_name ?? 'Product'));
 
-        return redirect()->route('products.index')->with('success', 'Product deactivated successfully!');
+        $reasons = [];
+        $salesCount = DB::table('sales_invoice_details')->where('product_uid', $uid)->count();
+        if ($salesCount > 0) {
+            $reasons[] = "{$salesCount} sales invoice line(s)";
+        }
+        $purchaseCount = DB::table('purchase_invoice_details')->where('product_uid', $uid)->count();
+        if ($purchaseCount > 0) {
+            $reasons[] = "{$purchaseCount} purchase invoice line(s)";
+        }
+        $adjustmentCount = DB::table('stock_adjustment_details')->where('product_uid', $uid)->count();
+        if ($adjustmentCount > 0) {
+            $reasons[] = "{$adjustmentCount} stock adjustment line(s)";
+        }
+        $supplyCount = DB::table('customer_monthly_supplies')->where('product_uid', $uid)->count();
+        if ($supplyCount > 0) {
+            $reasons[] = "{$supplyCount} monthly supply record(s)";
+        }
+
+        if ($reasons) {
+            return back()->with(
+                'error',
+                "Cannot delete \"{$label}\" because it is used in " . implode(', ', $reasons) . '. Remove those records first, or mark the product inactive instead.'
+            );
+        }
+
+        try {
+            DB::transaction(function () use ($product, $uid) {
+                DB::table('inventory_transactions')->where('product_uid', $uid)->delete();
+                Inventory::where('product_uid', $uid)->delete();
+                DB::table('customer_monthly_supply_overrides')->where('product_uid', $uid)->delete();
+                $product->delete();
+            });
+        } catch (QueryException $e) {
+            return back()->with(
+                'error',
+                "Could not delete \"{$label}\" because it is still referenced by other records in the database."
+            );
+        }
+
+        return back()->with('success', "Product \"{$label}\" deleted successfully!");
     }
 }

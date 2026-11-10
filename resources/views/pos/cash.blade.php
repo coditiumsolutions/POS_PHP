@@ -55,17 +55,6 @@
 <div class="container-fluid">
     <div id="posAlert" class="alert d-none" role="alert"></div>
 
-    @if(!empty($currentBranchName))
-        <div class="alert alert-light border mb-2 py-2">
-            Selling for branch: <strong>{{ $currentBranchName }}</strong>
-            <span class="text-muted small ms-1">(stock is deducted from this branch only)</span>
-        </div>
-    @else
-        <div class="alert alert-warning mb-2 py-2">
-            Your user has no matching branch. Assign a branch on the user record before selling.
-        </div>
-    @endif
-
     <div class="pos-sale-split pos-sale-layout {{ $barcodeMode ? 'pos-sale-layout--barcode-only' : 'pos-sale-layout--cards' }}" id="posSaleLayout">
         <!-- Product / Barcode Selection -->
         <div class="pos-sale-pane pos-sale-pane--items {{ $barcodeMode ? 'pos-sale-panel--barcode-only' : '' }}" id="posItemsPane">
@@ -98,7 +87,8 @@
                                  data-name="{{ $product->product_name }}"
                                  data-price="{{ $product->sale_price }}"
                                  data-tax="{{ $product->tax_percent }}"
-                                 data-discount="{{ $product->discount_percent }}"></div>
+                                 data-discount="{{ $product->discount_percent }}"
+                                 data-stock="{{ ($stockByProduct ?? [])[$product->uid] ?? 0 }}"></div>
                             @endforeach
                         </div>
                         @if($products->isEmpty())
@@ -145,6 +135,7 @@
                                         data-price="{{ $product->sale_price }}"
                                         data-tax="{{ $product->tax_percent }}"
                                         data-discount="{{ $product->discount_percent }}"
+                                        data-stock="{{ ($stockByProduct ?? [])[$product->uid] ?? 0 }}"
                                         title="{{ $product->product_code }}">
                                     @if(!empty($product->image_path))
                                         <img class="pos-item-card-photo" src="{{ $product->image_path }}" alt="">
@@ -177,62 +168,82 @@
         <!-- Cart Section -->
         <div class="pos-sale-pane pos-sale-pane--basket" id="posBasketPane">
             <div class="card h-100">
-                <div class="card-body">
+                <div class="card-body pos-basket-body">
                     <input type="hidden" id="cashPaymentMethodUid" value="{{ $cashPaymentMethodUid }}">
 
-                    <div class="d-grid gap-2 mb-3">
-                        <button type="button" id="completeSaleBtn" class="btn btn-success btn-lg">
+                    <div class="pos-basket-actions">
+                        <button type="button" id="completeSaleBtn" class="btn btn-success btn-sm pos-basket-action-btn">
                             <i class="bi bi-check-circle"></i> Complete Sale
                         </button>
-                        <button type="button" id="clearCartBtn" class="btn btn-outline-danger">
+                        <button type="button" id="clearCartBtn" class="btn btn-outline-danger btn-sm pos-basket-action-btn">
                             <i class="bi bi-x-circle"></i> Clear Cart
                         </button>
                     </div>
 
-                    <hr>
+                    <hr class="pos-basket-divider">
 
-                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
-                        <table class="table table-sm align-middle" id="cartTable">
+                    <div class="table-responsive pos-basket-table-wrap">
+                        <table class="table table-sm align-middle mb-0" id="cartTable">
                             <thead>
                                 <tr>
                                     <th>Product</th>
-                                    <th width="120" class="text-center">Qty</th>
-                                    <th width="80" class="text-end">Total</th>
-                                    <th width="30"></th>
+                                    <th width="110" class="text-center">Qty</th>
+                                    <th width="72" class="text-end">Total</th>
+                                    <th width="28"></th>
                                 </tr>
                             </thead>
                             <tbody id="cartItems">
                                 <tr id="emptyCart">
-                                    <td colspan="4" class="text-center text-muted">Cart is empty</td>
+                                    <td colspan="4" class="text-center text-muted py-2">Cart is empty</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
 
-                    <hr>
+                    <hr class="pos-basket-divider">
 
-                    <div class="row mb-2">
-                        <div class="col-6"><strong>Subtotal:</strong></div>
-                        <div class="col-6 text-end" id="subtotalDisplay">Rs. 0.00</div>
+                    <hr class="pos-basket-divider">
+                    <div class="pos-basket-totals">
+                        <div class="pos-basket-total-row">
+                            <strong>Subtotal:</strong>
+                            <span id="subtotalDisplay">Rs. 0.00</span>
+                        </div>
+                        <div class="pos-basket-total-row">
+                            <strong>Tax:</strong>
+                            <span id="taxDisplay">Rs. 0.00</span>
+                        </div>
+                        <hr class="pos-basket-divider pos-basket-divider--totals">
+                        <div class="pos-basket-total-row pos-basket-total-row--net">
+                            <strong>Total:</strong>
+                            <strong id="totalDisplay">Rs. 0.00</strong>
+                        </div>
                     </div>
-                    <div class="row mb-2">
-                        <div class="col-6"><strong>Discount:</strong></div>
-                        <div class="col-6 text-end" id="discountDisplay">Rs. 0.00</div>
-                    </div>
-                    <div class="row mb-2">
-                        <div class="col-6"><strong>Tax:</strong></div>
-                        <div class="col-6 text-end" id="taxDisplay">Rs. 0.00</div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-6"><h5>Total:</h5></div>
-                        <div class="col-6 text-end"><h5 id="totalDisplay">Rs. 0.00</h5></div>
-                    </div>
+                    <hr class="pos-basket-divider">
 
-                    <div class="mb-0">
-                        <label class="form-label">Customer Given Amount</label>
-                        <input type="number" id="customerGivenAmount" class="form-control"
-                               placeholder="0.00" step="0.01">
-                        <small class="text-muted">Change: <span id="changeAmount">Rs. 0.00</span></small>
+                    <div class="pos-pay-fields">
+                        <div class="pos-pay-row">
+                            <label class="pos-pay-label" for="discountAmount">Discount</label>
+                            <input type="number" id="discountAmount" class="form-control form-control-sm bg-light text-end pos-pay-input" value="0.00"
+                                   step="0.01" min="0" readonly tabindex="-1" aria-readonly="true">
+                            <span id="discountDisplay" class="d-none">Rs. 0.00</span>
+                        </div>
+                        <div class="pos-pay-row">
+                            <label class="pos-pay-label" for="customerGivenAmount">Customer Given</label>
+                            <input type="number" id="customerGivenAmount" class="form-control form-control-sm text-end pos-pay-input"
+                                   placeholder="0.00" step="0.01" min="0">
+                        </div>
+                        <div class="pos-pay-row">
+                            <label class="pos-pay-label" for="changeAmountInput">Change</label>
+                            <input type="text" id="changeAmountInput" class="form-control form-control-sm bg-light text-end pos-pay-input" value="Rs. 0.00"
+                                   readonly tabindex="-1" aria-readonly="true">
+                            <span id="changeAmount" class="d-none">Rs. 0.00</span>
+                        </div>
+                        <div class="pos-remaining-qty" id="remainingQtyBox" aria-live="polite">
+                            <div class="pos-remaining-qty-title">Quantity Remaining</div>
+                            <div id="remainingQtyList" class="pos-remaining-qty-list">
+                                <div class="pos-remaining-qty-empty text-muted">Add items to see remaining stock</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -256,10 +267,78 @@ function showAlert(type, message) {
     window.setTimeout(function () { el.classList.add('d-none'); }, 2500);
 }
 
+function formatStockQty(n) {
+    const v = Number(n);
+    if (!isFinite(v)) return '0';
+    if (Math.abs(v - Math.round(v)) < 0.0005) return String(Math.round(v));
+    return (Math.round(v * 1000) / 1000).toFixed(3).replace(/\.?0+$/, '');
+}
+
+function escapeHtml(text) {
+    return String(text == null ? '' : text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function lookupProductStock(uid) {
+    var nodes = document.querySelectorAll('[data-uid="' + String(uid) + '"]');
+    for (var i = 0; i < nodes.length; i++) {
+        if (nodes[i].hasAttribute('data-stock')) {
+            var stock = parseFloat(nodes[i].getAttribute('data-stock'));
+            if (isFinite(stock)) return stock;
+        }
+    }
+    return 0;
+}
+
+function resolveItemStock(item) {
+    var raw = item && item.stock;
+    var stock = parseFloat(raw);
+    if (isFinite(stock)) return stock;
+    return lookupProductStock(item && item.uid);
+}
+
+function updateRemainingQtyDisplay() {
+    var listEl = document.getElementById('remainingQtyList');
+    if (!listEl) return;
+
+    if (!cart || !cart.length) {
+        listEl.innerHTML = '<div class="pos-remaining-qty-empty text-muted">Add items to see remaining stock</div>';
+        return;
+    }
+
+    var html = '';
+    for (var i = 0; i < cart.length; i++) {
+        var item = cart[i];
+        var stock = resolveItemStock(item);
+        var inCart = parseFloat(item.quantity);
+        if (!isFinite(inCart)) inCart = 0;
+        var remaining = stock - inCart;
+        var qtyClass = remaining < 0 ? 'is-negative' : (remaining <= 5 ? 'is-low' : 'is-ok');
+        var label = String(item.name || 'Item') + ' ' + formatCartPrice(item.price);
+        html += '<div class="pos-remaining-qty-line ' + qtyClass + '">'
+            + '<span class="pos-remaining-qty-name">' + escapeHtml(label) + '</span>'
+            + '<strong class="pos-remaining-qty-left">' + formatStockQty(remaining) + ' left</strong>'
+            + '</div>';
+    }
+    listEl.innerHTML = html;
+}
+
 function addProductToCart(product) {
-    const existingIndex = cart.findIndex(item => String(item.uid) === String(product.uid));
+    var stockAttr = product && product.stock;
+    var stock = parseFloat(stockAttr);
+    if (!isFinite(stock)) {
+        stock = lookupProductStock(product && product.uid);
+    }
+    var existingIndex = cart.findIndex(function (item) {
+        return String(item.uid) === String(product.uid);
+    });
     if (existingIndex >= 0) {
         cart[existingIndex].quantity++;
+        cart[existingIndex].stock = stock;
     } else {
         cart.push({
             uid: product.uid,
@@ -267,6 +346,7 @@ function addProductToCart(product) {
             price: parseFloat(product.price) || 0,
             tax_percent: parseFloat(product.tax_percent) || 0,
             discount_percent: parseFloat(product.discount_percent) || 0,
+            stock: stock,
             quantity: 1
         });
     }
@@ -383,12 +463,14 @@ $(document).ready(function() {
         });
 
         $(document).on('click', '.add-product', function() {
+            var el = this;
             addProductToCart({
-                uid: $(this).data('uid'),
-                name: $(this).data('name'),
-                price: $(this).data('price'),
-                tax_percent: $(this).data('tax'),
-                discount_percent: $(this).data('discount')
+                uid: el.getAttribute('data-uid'),
+                name: el.getAttribute('data-name'),
+                price: el.getAttribute('data-price'),
+                tax_percent: el.getAttribute('data-tax'),
+                discount_percent: el.getAttribute('data-discount'),
+                stock: el.getAttribute('data-stock')
             });
         });
     }
@@ -435,12 +517,7 @@ $(document).ready(function() {
         }
     });
 
-    $('#customerGivenAmount').on('input', function() {
-        const given = parseFloat($(this).val()) || 0;
-        const total = parseFloat($('#totalDisplay').text().replace('Rs. ', '').replace(',', '')) || 0;
-        const change = given - total;
-        $('#changeAmount').text('Rs. ' + change.toFixed(2));
-    });
+    $('#customerGivenAmount').on('input', refreshChangeAmount);
 
     $('#completeSaleBtn').on('click', function() {
         if (cart.length === 0) {
@@ -454,7 +531,7 @@ $(document).ready(function() {
         }
 
         const subtotal = parseFloat($('#subtotalDisplay').text().replace('Rs. ', '').replace(',', '')) || 0;
-        const discount = parseFloat($('#discountDisplay').text().replace('Rs. ', '').replace(',', '')) || 0;
+        const discount = parseFloat($('#discountAmount').val()) || parseFloat(String($('#discountDisplay').text() || '').replace(/Rs\.\s*/i, '').replace(/,/g, '')) || 0;
         const tax = parseFloat($('#taxDisplay').text().replace('Rs. ', '').replace(',', '')) || 0;
         const total = parseFloat($('#totalDisplay').text().replace('Rs. ', '').replace(',', '')) || 0;
 
@@ -491,6 +568,8 @@ $(document).ready(function() {
                     updateCart();
                     $('#customerGivenAmount').val('');
                     $('#changeAmount').text('Rs. 0.00');
+                    $('#changeAmountInput').val('Rs. 0.00');
+                    $('#discountAmount').val('0.00');
                     if (confirm('Print invoice?')) {
                         window.open('{{ url("pos/print-invoice") }}/' + response.invoice_uid, '_blank');
                     }
@@ -554,7 +633,8 @@ $(document).ready(function() {
                 name: row.getAttribute('data-name'),
                 price: row.getAttribute('data-price'),
                 tax_percent: row.getAttribute('data-tax'),
-                discount_percent: row.getAttribute('data-discount')
+                discount_percent: row.getAttribute('data-discount'),
+                stock: row.getAttribute('data-stock')
             });
             showAlert('success', 'Added: ' + (row.getAttribute('data-name') || code));
             return true;
@@ -674,6 +754,16 @@ function formatCartPrice(price) {
     return Number.isInteger(n) ? String(n) : n.toFixed(2);
 }
 
+function refreshChangeAmount() {
+    const given = parseFloat($('#customerGivenAmount').val()) || 0;
+    const totalText = String($('#totalDisplay').text() || '').replace(/Rs\.\s*/i, '').replace(/,/g, '');
+    const total = parseFloat(totalText) || 0;
+    const change = given - total;
+    const label = 'Rs. ' + change.toFixed(2);
+    $('#changeAmount').text(label);
+    $('#changeAmountInput').val(label);
+}
+
 function updateCart() {
     const tbody = $('#cartItems');
     tbody.empty();
@@ -682,8 +772,11 @@ function updateCart() {
         tbody.append('<tr id="emptyCart"><td colspan="4" class="text-center text-muted">Cart is empty</td></tr>');
         $('#subtotalDisplay').text('Rs. 0.00');
         $('#discountDisplay').text('Rs. 0.00');
+        $('#discountAmount').val('0.00');
         $('#taxDisplay').text('Rs. 0.00');
         $('#totalDisplay').text('Rs. 0.00');
+        refreshChangeAmount();
+        updateRemainingQtyDisplay();
         return;
     }
 
@@ -725,8 +818,11 @@ function updateCart() {
 
     $('#subtotalDisplay').text('Rs. ' + subtotal.toFixed(2));
     $('#discountDisplay').text('Rs. ' + totalDiscount.toFixed(2));
+    $('#discountAmount').val(totalDiscount.toFixed(2));
     $('#taxDisplay').text('Rs. ' + totalTax.toFixed(2));
     $('#totalDisplay').text('Rs. ' + netTotal.toFixed(2));
+    refreshChangeAmount();
+    updateRemainingQtyDisplay();
 }
 </script>
 @endpush

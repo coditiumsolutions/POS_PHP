@@ -146,6 +146,8 @@ CREATE TABLE IF NOT EXISTS `inventories` (
   `quantity_in_stock` decimal(18,3) NOT NULL DEFAULT '0.000',
   `quantity_available` decimal(18,3) NOT NULL DEFAULT '0.000',
   `quantity_reserved` decimal(18,3) NOT NULL DEFAULT '0.000',
+  `quantity_in` decimal(18,3) NOT NULL DEFAULT '0.000',
+  `quantity_out` decimal(18,3) NOT NULL DEFAULT '0.000',
   `average_cost` decimal(18,2) NOT NULL DEFAULT '0.00',
   `updated_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`uid`),

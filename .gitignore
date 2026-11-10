@@ -21,6 +21,10 @@ yarn-error.log
 # Local data import dumps / scripts (may contain production data)
 /_data_import/
 
+# Hosting / SSL scratch files (not app source)
+/_acme/
+_ssl_certs_out.xml
+
 # Editor / backup leftovers
 *.bak
 *.bak_*

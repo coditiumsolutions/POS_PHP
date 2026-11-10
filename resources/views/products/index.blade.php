@@ -19,6 +19,19 @@
         </div>
     </div>
 
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Delete blocked:</strong> {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
     <div class="card">
         <div class="card-body">
             <form method="GET" class="row g-2 align-items-center mb-3">
@@ -85,6 +98,12 @@
                             </td>
                             <td class="text-nowrap">
                                 <a href="{{ route('products.edit', $product->uid) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                <form method="POST" action="{{ route('products.destroy', $product->uid) }}" class="d-inline"
+                                      onsubmit="return confirm('Permanently delete this product? This cannot be undone.');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
                             </td>
                         </tr>
                         @empty

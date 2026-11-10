@@ -46,10 +46,17 @@
                 </div>
             </div>
 
-            <div class="mt-3 d-flex gap-2">
+            <div class="mt-3 d-flex flex-wrap gap-2">
                 <button type="submit" class="btn btn-primary">Save</button>
                 <a href="{{ route('product-categories.index') }}" class="btn btn-outline-secondary">Cancel</a>
             </div>
+        </form>
+
+        <form method="POST" action="{{ route('product-categories.destroy', $category->uid) }}" class="mt-3"
+              onsubmit="return confirm('Permanently delete this category? This cannot be undone.');">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="btn btn-danger">Delete Category</button>
         </form>
     </div>
 </div>

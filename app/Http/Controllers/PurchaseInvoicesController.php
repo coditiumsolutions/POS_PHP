@@ -246,9 +246,15 @@ class PurchaseInvoicesController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return redirect()->back()
+            $reason = $e->getMessage();
+            if (str_contains($reason, 'Unknown column')) {
+                $reason = 'Database column mismatch while updating stock. Please contact support with this message: ' . $reason;
+            }
+
+            return redirect()
+                ->route('purchase-invoices.create')
                 ->withInput()
-                ->with('error', 'Purchase was not saved. Reason: ' . $e->getMessage());
+                ->with('error', 'Purchase was not saved. ' . $reason);
         }
     }
 
@@ -325,11 +331,9 @@ class PurchaseInvoicesController extends Controller
             'reference_no' => $referenceNo,
             'transaction_date' => now(),
             'quantity' => $quantity,
-            'quantity_in' => $quantity,
-            'quantity_out' => 0,
             'unit_cost' => $unitCost,
             'total_cost' => round($quantity * $unitCost, 2),
-            'user_uid' => Auth::id(),
+            'remarks' => 'Purchase ' . $referenceNo,
             'created_date' => now(),
         ]);
     }

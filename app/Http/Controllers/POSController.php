@@ -54,6 +54,19 @@ class POSController extends Controller
 
         $products = $productsQuery->orderBy('product_name')->get();
 
+        $stockByProduct = [];
+        if ($branchUid && $products->isNotEmpty()) {
+            $stockByProduct = Inventory::query()
+                ->where('branch_uid', $branchUid)
+                ->whereIn('product_uid', $products->pluck('uid'))
+                ->get(['product_uid', 'quantity_in_stock', 'quantity_available'])
+                ->mapWithKeys(function ($row) {
+                    $qty = $row->quantity_available ?? $row->quantity_in_stock ?? 0;
+                    return [(int) $row->product_uid => (float) $qty];
+                })
+                ->all();
+        }
+
         $categories = ProductCategory::where('is_active', true)
             ->orderBy('category_name')
             ->get();
@@ -68,6 +81,7 @@ class POSController extends Controller
         return view('pos.cash', [
             'products' => $products,
             'categories' => $categories,
+            'stockByProduct' => $stockByProduct,
             'cashPaymentMethodUid' => $cashPaymentMethod?->uid,
             'pageTitle' => $pageTitle,
             'enableBarcodeScan' => $enableBarcodeScan,
@@ -273,9 +287,7 @@ class POSController extends Controller
             'reference_no' => $referenceNo,
             'transaction_date' => now(),
             'quantity' => abs($quantity),
-            'quantity_in' => $quantity > 0 ? abs($quantity) : 0,
-            'quantity_out' => $quantity < 0 ? abs($quantity) : 0,
-            'user_uid' => Auth::id(),
+            'remarks' => ($quantity < 0 ? 'Sale ' : 'Return ') . $referenceNo,
             'created_date' => now(),
         ]);
     }

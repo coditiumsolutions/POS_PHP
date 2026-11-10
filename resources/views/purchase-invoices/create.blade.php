@@ -17,8 +17,20 @@
 
     <div id="purchaseAlert" class="alert d-none" role="alert"></div>
 
+    @if(session('success'))
+        <div class="alert alert-success border-success shadow-sm" id="purchaseServerSuccess" role="alert">
+            <strong><i class="bi bi-check-circle"></i> Saved:</strong> {{ session('success') }}
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="alert alert-danger border-danger shadow-sm" id="purchaseServerError" role="alert">
+            <strong><i class="bi bi-x-circle"></i> Not saved:</strong> {{ session('error') }}
+        </div>
+    @endif
+
     @if($errors->any())
-        <div class="alert alert-danger border-danger" id="purchaseValidationErrors">
+        <div class="alert alert-danger border-danger shadow-sm" id="purchaseValidationErrors" role="alert">
             <strong><i class="bi bi-x-circle"></i> Purchase was not saved. Fix these issues:</strong>
             <ul class="mb-0 mt-2">
                 @foreach($errors->all() as $error)
@@ -224,16 +236,18 @@
         return toNumber(n).toFixed(2);
     }
 
-    function showAlert(type, message) {
+    function showAlert(type, message, sticky) {
         var el = document.getElementById('purchaseAlert');
         if (!el) return;
-        el.className = 'alert alert-' + type;
+        el.className = 'alert alert-' + type + ' shadow-sm';
         el.textContent = message;
         el.classList.remove('d-none');
         if (alertTimer) clearTimeout(alertTimer);
-        alertTimer = setTimeout(function () {
-            el.classList.add('d-none');
-        }, 3500);
+        if (!sticky) {
+            alertTimer = setTimeout(function () {
+                el.classList.add('d-none');
+            }, 4500);
+        }
     }
 
     function getLineState(row) {
@@ -430,13 +444,16 @@
         var saveBtn = document.getElementById('savePurchaseBtn');
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving purchase...';
-        showAlert('info', 'Saving purchase with ' + filled + ' item(s). Inventory will update after save.');
+        showAlert('info', 'Saving purchase with ' + filled + ' item(s). Please wait — you will see a success or error message next.', true);
         recalc();
     });
 
-    @if($errors->any() || session('error'))
+    @if($errors->any() || session('error') || session('success'))
     window.setTimeout(function () {
-        var target = document.getElementById('purchaseValidationErrors') || document.getElementById('purchaseAlert');
+        var target = document.getElementById('purchaseServerError')
+            || document.getElementById('purchaseValidationErrors')
+            || document.getElementById('purchaseServerSuccess')
+            || document.getElementById('purchaseAlert');
         if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 100);
     @endif

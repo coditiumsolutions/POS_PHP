@@ -18,6 +18,8 @@ class Inventory extends Model
         'quantity_in_stock' => 'decimal:3',
         'quantity_available' => 'decimal:3',
         'quantity_reserved' => 'decimal:3',
+        'quantity_in' => 'decimal:3',
+        'quantity_out' => 'decimal:3',
         'average_cost' => 'decimal:2',
         'updated_date' => 'datetime',
     ];

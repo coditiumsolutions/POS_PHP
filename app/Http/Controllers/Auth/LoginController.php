@@ -11,12 +11,23 @@ use Illuminate\Support\Facades\Hash;
 
 class LoginController extends Controller
 {
-    public function showLoginForm()
+    public function showLoginForm(Request $request)
     {
         if (Auth::check()) {
             return redirect()->route('pos.cash');
         }
-        return view('auth.login');
+
+        // Avoid 419 from cached login HTML / stale CSRF session in the browser.
+        if (!$request->session()->isStarted()) {
+            $request->session()->start();
+        }
+        $request->session()->regenerateToken();
+
+        return response()
+            ->view('auth.login')
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 
     public function login(Request $request)

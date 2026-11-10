@@ -134,6 +134,8 @@ return new class extends Migration
             $table->decimal('quantity_in_stock', 18, 3)->default(0);
             $table->decimal('quantity_available', 18, 3)->default(0);
             $table->decimal('quantity_reserved', 18, 3)->default(0);
+            $table->decimal('quantity_in', 18, 3)->default(0);
+            $table->decimal('quantity_out', 18, 3)->default(0);
             $table->decimal('average_cost', 18, 2)->default(0);
             $table->timestamp('updated_date')->useCurrent();
             $table->unique(['product_uid', 'warehouse_uid']);

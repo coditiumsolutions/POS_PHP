@@ -4,11 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Home') - Coditium POS</title>
+    <title>@yield('title', 'Home') - LipSip POS</title>
     <meta name="theme-color" content="#0f766e">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="{{ asset('css/site.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/site.css') }}?v={{ @filemtime(public_path('css/site.css')) ?: time() }}">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     @stack('styles')
 </head>
 <body>
@@ -26,7 +29,7 @@
     <div class="pos-header-bars no-print">
         <header class="pos-topbar-primary">
             <a class="pos-brand" href="{{ route('nav.clear') }}">
-                <span>Coditium POS</span>
+                <span>LipSip POS</span>
             </a>
             <div class="pos-user">
                 <div class="pos-session-meta" title="Signed-in user session">

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Dashboard - POS PHP')
+@section('title', 'Dashboard - LipSip POS')
 
 @section('content')
 <div class="container-fluid">

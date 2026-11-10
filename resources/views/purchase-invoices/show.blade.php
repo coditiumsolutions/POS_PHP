@@ -5,8 +5,13 @@
 @section('content')
 <div class="container-fluid">
     @if(session('success'))
-        <div class="alert alert-success">
-            <i class="bi bi-check-circle"></i> {{ session('success') }}
+        <div class="alert alert-success border-success shadow-sm" role="alert">
+            <strong><i class="bi bi-check-circle"></i> Saved:</strong> {{ session('success') }}
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger border-danger shadow-sm" role="alert">
+            <strong><i class="bi bi-x-circle"></i> Error:</strong> {{ session('error') }}
         </div>
     @endif
 

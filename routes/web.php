@@ -112,6 +112,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [UsersController::class, 'index'])->name('index');
         Route::get('/create', [UsersController::class, 'create'])->name('create');
         Route::post('/', [UsersController::class, 'store'])->name('store');
+        Route::get('/{uid}', [UsersController::class, 'show'])->name('show');
         Route::get('/{uid}/edit', [UsersController::class, 'edit'])->name('edit');
         Route::put('/{uid}', [UsersController::class, 'update'])->name('update');
         Route::delete('/{uid}', [UsersController::class, 'destroy'])->name('destroy');
