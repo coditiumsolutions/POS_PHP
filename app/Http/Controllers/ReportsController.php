@@ -7,12 +7,14 @@ use App\Models\SalesInvoice;
 use App\Models\PurchaseInvoice;
 use App\Models\Expense;
 use App\Models\EmployeePayment;
+use App\Models\VendorPayment;
 use App\Models\Product;
 use App\Models\Inventory;
 use App\Models\Customer;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ReportsController extends Controller
 {
@@ -295,22 +297,31 @@ class ReportsController extends Controller
             ->whereDate('expense_date', '<=', $dateTo)
             ->sum('amount');
 
-        $salaries = (float) EmployeePayment::whereDate('payment_date', '>=', $dateFrom)
-            ->whereDate('payment_date', '<=', $dateTo)
-            ->selectRaw('COALESCE(SUM(CASE WHEN COALESCE(amount, 0) > 0 THEN amount ELSE COALESCE(net_salary, 0) END), 0) as total')
-            ->value('total');
+        $salaryQuery = EmployeePayment::whereDate('payment_date', '>=', $dateFrom)
+            ->whereDate('payment_date', '<=', $dateTo);
+        if (Schema::hasColumn('employee_payments', 'amount')) {
+            $salaries = (float) $salaryQuery
+                ->selectRaw('COALESCE(SUM(CASE WHEN COALESCE(amount, 0) > 0 THEN amount ELSE COALESCE(net_salary, 0) END), 0) as total')
+                ->value('total');
+        } else {
+            $salaries = (float) $salaryQuery->sum('net_salary');
+        }
 
-        $gross = $sales - $purchases;
-        $totalOutflow = $expenses + $salaries;
+        $vendorPayments = (float) VendorPayment::whereDate('payment_date', '>=', $dateFrom)
+            ->whereDate('payment_date', '<=', $dateTo)
+            ->sum('amount');
+
+        $totalOutflow = $expenses + $salaries + $vendorPayments;
+        $net = $sales - $totalOutflow;
 
         $summary = [
             'sales' => $sales,
             'purchases' => $purchases,
             'expenses' => $expenses,
             'salaries' => $salaries,
-            'gross' => $gross,
+            'vendor_payments' => $vendorPayments,
             'total_outflow' => $totalOutflow,
-            'net' => $gross - $totalOutflow,
+            'net' => $net,
         ];
 
         return view('reports.financial', compact('summary', 'dateFrom', 'dateTo', 'dateFromDisplay', 'dateToDisplay'));

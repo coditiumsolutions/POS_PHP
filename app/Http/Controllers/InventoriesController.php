@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\Inventory;
 use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Support\CurrentBranch;
 use Illuminate\Http\Request;
 
@@ -18,8 +19,9 @@ class InventoriesController extends Controller
     public function index(Request $request)
     {
         $search = trim((string) $request->get('search', ''));
+        $categoryUid = $request->get('category_uid');
 
-        $query = Inventory::with(['product', 'branch', 'warehouse']);
+        $query = Inventory::with(['product.category', 'branch', 'warehouse']);
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -36,9 +38,16 @@ class InventoriesController extends Controller
             });
         }
 
-        $inventories = $query->orderByDesc('uid')->paginate(50)->withQueryString();
+        if ($categoryUid !== null && $categoryUid !== '') {
+            $query->whereHas('product', function ($pq) use ($categoryUid) {
+                $pq->where('category_uid', $categoryUid);
+            });
+        }
 
-        return view('inventories.index', compact('inventories', 'search'));
+        $inventories = $query->orderByDesc('uid')->paginate(25)->withQueryString();
+        $categories = ProductCategory::where('is_active', true)->orderBy('category_name')->get();
+
+        return view('inventories.index', compact('inventories', 'search', 'categories', 'categoryUid'));
     }
 
     public function create()
@@ -112,29 +121,13 @@ class InventoriesController extends Controller
         $inventory = Inventory::findOrFail($uid);
 
         $validated = $request->validate([
-            'product_uid' => 'required|integer|exists:products,uid',
-            'branch_uid' => 'required|integer|exists:branches,uid',
             'quantity_in_stock' => 'required|numeric',
             'average_cost' => 'nullable|numeric|min:0',
-        ], [
-            'branch_uid.required' => 'Branch is required. One inventory record per product and branch.',
         ]);
-
-        $duplicate = Inventory::where('product_uid', $validated['product_uid'])
-            ->where('branch_uid', $validated['branch_uid'])
-            ->where('uid', '!=', $inventory->uid)
-            ->exists();
-
-        if ($duplicate) {
-            return back()
-                ->withInput()
-                ->withErrors(['product_uid' => 'Another inventory record already exists for this product and branch.']);
-        }
 
         $qty = (float) $validated['quantity_in_stock'];
 
-        $inventory->product_uid = $validated['product_uid'];
-        $inventory->branch_uid = $validated['branch_uid'];
+        // Product/branch are fixed on edit to avoid colliding with another inventory row.
         $inventory->quantity_in_stock = $qty;
         $inventory->quantity_available = $qty;
         $inventory->average_cost = $validated['average_cost'] ?? $inventory->average_cost;

@@ -5,9 +5,6 @@
         <h2>Employees</h2>
         <a href="{{ route('employees.create') }}" class="btn btn-primary"><i class="fas fa-plus"></i> Add Employee</a>
     </div>
-    @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
     <div class="card">
         <div class="card-body">
             <table class="table table-hover">
@@ -34,7 +31,7 @@
                         <td>
                             <a href="{{ route('employees.show', $employee->uid) }}" class="btn btn-sm btn-info"><i class="fas fa-eye"></i></a>
                             <a href="{{ route('employees.edit', $employee->uid) }}" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></a>
-                            <a href="{{ route('employees.payroll', $employee->uid) }}" class="btn btn-sm btn-success"><i class="fas fa-money-bill"></i> Payroll</a>
+                            <a href="{{ route('employees.payroll', $employee->uid) }}" class="btn btn-sm btn-success">Salary</a>
                         </td>
                     </tr>
                     @empty

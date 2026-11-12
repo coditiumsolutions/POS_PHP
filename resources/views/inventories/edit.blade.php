@@ -5,7 +5,7 @@
 @section('content')
 <div class="container-fluid">
     <h1 class="h3 page-heading invoice-details-heading mb-3">Edit Inventory</h1>
-    <p class="text-muted mb-3">One inventory record per product and branch.</p>
+    <p class="text-muted mb-3">Update quantity and cost for this product/branch. Product and branch cannot be changed here.</p>
 
     <div class="bg-white border rounded p-3">
         <form method="POST" action="{{ route('inventories.update', $inventory->uid) }}">
@@ -14,28 +14,15 @@
 
             <div class="invoice-meta-grid invoice-meta-form">
                 <div class="invoice-meta-row">
-                    <label class="invoice-meta-title" for="product_uid">Product *</label>
+                    <label class="invoice-meta-title">Product</label>
                     <div class="invoice-meta-field">
-                        <select id="product_uid" name="product_uid" class="form-select form-select-sm invoice-meta-input" required>
-                            @foreach($products as $product)
-                                <option value="{{ $product->uid }}" @selected(old('product_uid', $inventory->product_uid) == $product->uid)>
-                                    {{ $product->product_name }}
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('product_uid')<div class="text-danger small">{{ $message }}</div>@enderror
+                        <input type="text" class="form-control form-control-sm invoice-meta-input"
+                               value="{{ $inventory->product->product_name ?? ('#'.$inventory->product_uid) }}" readonly>
                     </div>
-                    <label class="invoice-meta-title" for="branch_uid">Branch *</label>
+                    <label class="invoice-meta-title">Branch</label>
                     <div class="invoice-meta-field">
-                        <select id="branch_uid" name="branch_uid" class="form-select form-select-sm invoice-meta-input" required>
-                            <option value="">Select branch</option>
-                            @foreach($branches as $branch)
-                                <option value="{{ $branch->uid }}" @selected((string) old('branch_uid', $inventory->branch_uid) === (string) $branch->uid)>
-                                    {{ $branch->branch_name }}
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('branch_uid')<div class="text-danger small">{{ $message }}</div>@enderror
+                        <input type="text" class="form-control form-control-sm invoice-meta-input"
+                               value="{{ $inventory->branch->branch_name ?? $inventory->branch_name }}" readonly>
                     </div>
                 </div>
 

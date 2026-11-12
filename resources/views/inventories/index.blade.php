@@ -26,18 +26,28 @@
     <div class="card">
         <div class="card-body">
             <form method="GET" action="{{ route('inventories.index') }}" class="row g-2 align-items-center mb-3">
-                <div class="col-md-5 col-lg-4">
+                <div class="col-md-4 col-lg-4">
                     <input type="text"
                            name="search"
                            class="form-control"
                            placeholder="Search product, code, or branch..."
                            value="{{ $search ?? request('search') }}">
                 </div>
+                <div class="col-md-3 col-lg-3">
+                    <select name="category_uid" class="form-select">
+                        <option value="">All Categories</option>
+                        @foreach($categories as $category)
+                        <option value="{{ $category->uid }}" {{ (string) ($categoryUid ?? request('category_uid')) === (string) $category->uid ? 'selected' : '' }}>
+                            {{ $category->category_name }}
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="col-auto">
                     <button type="submit" class="btn btn-secondary">
                         <i class="bi bi-search" aria-hidden="true"></i> Search
                     </button>
-                    @if(!empty($search))
+                    @if(!empty($search) || !empty($categoryUid))
                         <a href="{{ route('inventories.index') }}" class="btn btn-outline-secondary">Clear</a>
                     @endif
                 </div>
@@ -48,6 +58,7 @@
                     <thead>
                         <tr>
                             <th>Product</th>
+                            <th>Category</th>
                             <th class="inventory-col-branch">Branch</th>
                             <th class="text-end inventory-col-qty">Current Qty</th>
                             <th class="text-nowrap inventory-col-action">Action</th>
@@ -57,6 +68,7 @@
                         @forelse($inventories as $inv)
                         <tr>
                             <td>{{ $inv->product->product_name ?? ('#'.$inv->product_uid) }}</td>
+                            <td>{{ $inv->product->category->category_name ?? '—' }}</td>
                             <td class="inventory-col-branch">{{ $inv->branch_name }}</td>
                             <td class="text-end inventory-col-qty">{{ number_format((float) $inv->quantity_in_stock, 3) }}</td>
                             <td class="text-nowrap inventory-col-action">
@@ -66,7 +78,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="4" class="text-center py-4 text-muted">No inventory records</td>
+                            <td colspan="5" class="text-center py-4 text-muted">No inventory records</td>
                         </tr>
                         @endforelse
                     </tbody>

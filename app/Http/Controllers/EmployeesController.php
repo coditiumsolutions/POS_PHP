@@ -9,7 +9,7 @@ use App\Models\EmployeePayment;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class EmployeesController extends Controller
 {
@@ -159,25 +159,26 @@ class EmployeesController extends Controller
             ->where('is_active', true)
             ->orderBy('deduction_type')
             ->get();
-        $payments = EmployeePayment::where('employee_uid', $uid)
-            ->orderByDesc('payment_date')
-            ->orderByDesc('uid')
-            ->paginate(20);
-
-        $totalAllowances = (float) $allowances->sum('amount');
-        $totalDeductions = (float) $deductions->sum('amount');
-        $netSalary = (float) ($employee->basic_salary ?? 0) + $totalAllowances - $totalDeductions;
 
         $selectedMonth = $request->input('month_year', now()->format('Y-m'));
         if (!preg_match('/^\d{4}-\d{2}$/', (string) $selectedMonth)) {
             $selectedMonth = now()->format('Y-m');
         }
 
+        $payments = EmployeePayment::where('employee_uid', $uid)
+            ->where('month_year', $selectedMonth)
+            ->orderByDesc('payment_date')
+            ->orderByDesc('uid')
+            ->get();
+
+        $totalAllowances = (float) $allowances->sum('amount');
+        $totalDeductions = (float) $deductions->sum('amount');
+        $netSalary = round((float) ($employee->basic_salary ?? 0) + $totalAllowances - $totalDeductions, 2);
+
         $paidThisMonth = $this->paidForMonth($uid, $selectedMonth);
         $balanceSalary = round($netSalary - $paidThisMonth, 2);
         $remainingSalary = max(0, $balanceSalary);
         $overpaidAmount = max(0, round($paidThisMonth - $netSalary, 2));
-        $activeTab = $request->input('tab', 'payments') === 'allowances' ? 'allowances' : 'payments';
 
         return view('employees.payroll', compact(
             'employee',
@@ -191,8 +192,7 @@ class EmployeesController extends Controller
             'paidThisMonth',
             'remainingSalary',
             'balanceSalary',
-            'overpaidAmount',
-            'activeTab'
+            'overpaidAmount'
         ));
     }
 
@@ -214,17 +214,17 @@ class EmployeesController extends Controller
         ]);
 
         return redirect()
-            ->route('employees.payroll', ['uid' => $uid, 'tab' => 'allowances'])
+            ->route('employees.payroll', ['uid' => $uid, 'month_year' => $request->input('month_year', now()->format('Y-m'))])
             ->with('success', 'Allowance added.');
     }
 
-    public function destroyAllowance($uid, $allowanceUid)
+    public function destroyAllowance(Request $request, $uid, $allowanceUid)
     {
         $allowance = EmployeeAllowance::where('employee_uid', $uid)->where('uid', $allowanceUid)->firstOrFail();
         $allowance->delete();
 
         return redirect()
-            ->route('employees.payroll', ['uid' => $uid, 'tab' => 'allowances'])
+            ->route('employees.payroll', ['uid' => $uid, 'month_year' => $request->input('month_year', now()->format('Y-m'))])
             ->with('success', 'Allowance removed.');
     }
 
@@ -246,17 +246,17 @@ class EmployeesController extends Controller
         ]);
 
         return redirect()
-            ->route('employees.payroll', ['uid' => $uid, 'tab' => 'allowances'])
+            ->route('employees.payroll', ['uid' => $uid, 'month_year' => $request->input('month_year', now()->format('Y-m'))])
             ->with('success', 'Deduction added.');
     }
 
-    public function destroyDeduction($uid, $deductionUid)
+    public function destroyDeduction(Request $request, $uid, $deductionUid)
     {
         $deduction = EmployeeDeduction::where('employee_uid', $uid)->where('uid', $deductionUid)->firstOrFail();
         $deduction->delete();
 
         return redirect()
-            ->route('employees.payroll', ['uid' => $uid, 'tab' => 'allowances'])
+            ->route('employees.payroll', ['uid' => $uid, 'month_year' => $request->input('month_year', now()->format('Y-m'))])
             ->with('success', 'Deduction removed.');
     }
 
@@ -284,12 +284,16 @@ class EmployeesController extends Controller
         }
 
         $monthYear = $validated['month_year'] ?? $validated['salary_month'] ?? now()->format('Y-m');
+        if (!preg_match('/^\d{4}-\d{2}$/', (string) $monthYear)) {
+            return back()->withInput()->withErrors(['month_year' => 'Salary month is invalid.']);
+        }
+
         $payAmount = round((float) $validated['net_salary'], 2);
 
         $employee = Employee::findOrFail($validated['employee_uid']);
         $totalAllowances = (float) EmployeeAllowance::where('employee_uid', $employee->uid)->where('is_active', true)->sum('amount');
         $totalDeductions = (float) EmployeeDeduction::where('employee_uid', $employee->uid)->where('is_active', true)->sum('amount');
-        $monthNetSalary = (float) ($employee->basic_salary ?? 0) + $totalAllowances - $totalDeductions;
+        $monthNetSalary = round((float) ($employee->basic_salary ?? 0) + $totalAllowances - $totalDeductions, 2);
         $paidThisMonth = $this->paidForMonth($employee->uid, $monthYear);
 
         $remarks = $validated['remarks'] ?? null;
@@ -306,12 +310,17 @@ class EmployeesController extends Controller
             'total_allowances' => $validated['total_allowances'] ?? $validated['allowances_amount'] ?? $totalAllowances,
             'total_deductions' => $validated['total_deductions'] ?? $validated['deductions_amount'] ?? $totalDeductions,
             'net_salary' => $payAmount,
-            'amount' => $payAmount,
             'remarks' => $remarks,
-            'user_uid' => Auth::id(),
             'payment_no' => $this->generatePaymentNo(),
             'created_date' => now(),
         ];
+
+        if (Schema::hasColumn('employee_payments', 'amount')) {
+            $payload['amount'] = $payAmount;
+        }
+        if (Schema::hasColumn('employee_payments', 'user_uid')) {
+            $payload['user_uid'] = Auth::id();
+        }
 
         EmployeePayment::create($payload);
 
@@ -321,14 +330,13 @@ class EmployeesController extends Controller
         if ($newBalance < 0) {
             $message .= ' Overpaid by Rs. ' . number_format(abs($newBalance), 2) . '.';
         } else {
-            $message .= ' Remaining: Rs. ' . number_format($newBalance, 2) . '.';
+            $message .= ' Remaining salary: Rs. ' . number_format($newBalance, 2) . '.';
         }
 
         return redirect()
             ->route('employees.payroll', [
                 'uid' => $validated['employee_uid'],
                 'month_year' => $monthYear,
-                'tab' => 'payments',
             ])
             ->with('success', $message);
     }
@@ -346,21 +354,24 @@ class EmployeesController extends Controller
             ->route('employees.payroll', [
                 'uid' => $uid,
                 'month_year' => $monthYear,
-                'tab' => 'payments',
             ])
             ->with('success', 'Payment deleted successfully.');
     }
 
     private function paidForMonth($employeeUid, string $monthYear): float
     {
+        $hasAmount = Schema::hasColumn('employee_payments', 'amount');
+        $columns = $hasAmount ? ['amount', 'net_salary'] : ['net_salary'];
         $payments = EmployeePayment::where('employee_uid', $employeeUid)
             ->where('month_year', $monthYear)
-            ->get(['amount', 'net_salary']);
+            ->get($columns);
 
-        return round((float) $payments->sum(function ($payment) {
-            $amount = (float) ($payment->amount ?? 0);
-            if ($amount > 0) {
-                return $amount;
+        return round((float) $payments->sum(function ($payment) use ($hasAmount) {
+            if ($hasAmount) {
+                $amount = (float) ($payment->amount ?? 0);
+                if ($amount > 0) {
+                    return $amount;
+                }
             }
 
             return (float) ($payment->net_salary ?? 0);

@@ -47,7 +47,7 @@
         <header class="pos-topbar-secondary">
             <nav class="pos-top-nav">
                 <a class="pos-top-link {{ ($navKey === 'Dashboard') ? 'active' : '' }}"
-                   href="{{ route('nav.clear') }}">Home</a>
+                   href="{{ route('nav.clear') }}">Homes</a>
                 @foreach($topAreas as $area)
                     @php
                         $areaActive = $area['key'] === 'AllModules'

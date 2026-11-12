@@ -5,7 +5,7 @@
     <h1 class="page-heading">Modules</h1>
 </div>
 @foreach($sections as $section)
-    <div class="mb-4">
+    <div class="modules-section">
         <h2 class="h5 mb-1">{{ $section['title'] }}</h2>
         @if(!empty($section['subtitle']))
             <p class="text-muted small mb-3">{{ $section['subtitle'] }}</p>

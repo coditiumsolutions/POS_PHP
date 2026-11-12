@@ -31,45 +31,75 @@
     </div>
 
     <div class="row g-3 mb-3">
-        <div class="col-lg-6">
+        <div class="col-md-6 col-xl-3">
             <div class="border rounded p-3 h-100" style="background:#e8f1ff;">
-                <h2 class="h6 mb-3">Sales</h2>
-                <div class="border rounded bg-white p-3 mb-2">
-                    <div class="text-muted small">Sales</div>
-                    <div class="h4 mb-0">Rs. {{ number_format($summary['sales'], 2) }}</div>
-                </div>
-                <div class="border rounded bg-white p-3 mb-2">
-                    <div class="text-muted small">Purchases</div>
-                    <div class="h4 mb-0">Rs. {{ number_format($summary['purchases'], 2) }}</div>
-                </div>
-                <div class="border rounded bg-white p-3">
-                    <div class="text-muted small">Gross (Sales − Purchases)</div>
-                    <div class="h4 mb-0">Rs. {{ number_format($summary['gross'], 2) }}</div>
-                </div>
+                <div class="text-muted small">Sale</div>
+                <div class="h4 mb-1">Rs. {{ number_format($summary['sales'], 2) }}</div>
+                <div class="small"><a href="{{ route('reports.sales', request()->query()) }}">View sales report</a></div>
             </div>
         </div>
-
-        <div class="col-lg-6">
+        <div class="col-md-6 col-xl-3">
             <div class="border rounded p-3 h-100" style="background:#fff6e8;">
-                <h2 class="h6 mb-3">Expenses</h2>
-                <div class="border rounded bg-white p-3 mb-2">
-                    <div class="text-muted small">Expenses</div>
-                    <div class="h4 mb-0">Rs. {{ number_format($summary['expenses'], 2) }}</div>
-                </div>
-                <div class="border rounded bg-white p-3 mb-2">
-                    <div class="text-muted small">Employee Salaries</div>
-                    <div class="h4 mb-0">Rs. {{ number_format($summary['salaries'], 2) }}</div>
-                </div>
-                <div class="border rounded bg-white p-3">
-                    <div class="text-muted small">Total Outflow (Expenses + Salaries)</div>
-                    <div class="h4 mb-0">Rs. {{ number_format($summary['total_outflow'], 2) }}</div>
-                </div>
+                <div class="text-muted small">Expense</div>
+                <div class="h4 mb-1">Rs. {{ number_format($summary['expenses'], 2) }}</div>
+                <div class="small"><a href="{{ route('reports.expenses', request()->query()) }}">View expenses report</a></div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="border rounded p-3 h-100" style="background:#f3e8ff;">
+                <div class="text-muted small">Salaries</div>
+                <div class="h4 mb-1">Rs. {{ number_format($summary['salaries'], 2) }}</div>
+                <div class="small text-muted">Employee salary payments</div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="border rounded p-3 h-100" style="background:#e7f7f5;">
+                <div class="text-muted small">Vendor Payments</div>
+                <div class="h4 mb-1">Rs. {{ number_format($summary['vendor_payments'], 2) }}</div>
+                <div class="small"><a href="{{ route('reports.vendor-payments', request()->query()) }}">View vendor payments</a></div>
             </div>
         </div>
     </div>
 
-    <div class="border rounded p-3" style="background:#eaf8ef;">
-        <div class="text-muted small">Net (Gross − Total Outflow)</div>
+    <div class="bg-white border rounded mb-3">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Particular</th>
+                    <th class="text-end">Amount (Rs.)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Sale</td>
+                    <td class="text-end fw-semibold">{{ number_format($summary['sales'], 2) }}</td>
+                </tr>
+                <tr>
+                    <td>Expense</td>
+                    <td class="text-end">{{ number_format($summary['expenses'], 2) }}</td>
+                </tr>
+                <tr>
+                    <td>Salaries</td>
+                    <td class="text-end">{{ number_format($summary['salaries'], 2) }}</td>
+                </tr>
+                <tr>
+                    <td>Vendor Payments</td>
+                    <td class="text-end">{{ number_format($summary['vendor_payments'], 2) }}</td>
+                </tr>
+                <tr class="table-light">
+                    <td class="fw-semibold">Total Outflow (Expense + Salaries + Vendor Payments)</td>
+                    <td class="text-end fw-semibold">{{ number_format($summary['total_outflow'], 2) }}</td>
+                </tr>
+                <tr>
+                    <td class="text-muted">Purchases (invoices, reference)</td>
+                    <td class="text-end text-muted">{{ number_format($summary['purchases'], 2) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="border rounded p-3" style="background:{{ $summary['net'] >= 0 ? '#eaf8ef' : '#fde8e8' }};">
+        <div class="text-muted small">Net (Sale − Expense − Salaries − Vendor Payments)</div>
         <div class="h3 mb-0">Rs. {{ number_format($summary['net'], 2) }}</div>
     </div>
 </div>

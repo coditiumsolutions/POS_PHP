@@ -14,10 +14,6 @@
         </a>
     </div>
 
-    @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
-
     <div class="card">
         <div class="card-body">
             <form method="GET" action="{{ route('vendors.index') }}" class="row g-2 align-items-center mb-3">
