@@ -6,10 +6,12 @@
     <title>Invoice {{ $invoice->invoice_no }}</title>
     <style>
         :root {
-            --ink: #0f172a;
-            --muted: #64748b;
-            --line: #cbd5e1;
-            --soft: #f8fafc;
+            /* Receipt roll width. Change to 58mm for a smaller printer. */
+            --paper: 80mm;
+            --pad: 3mm;
+            --ink: #000;
+            --muted: #333;
+            --line: #999;
         }
 
         * { box-sizing: border-box; }
@@ -19,23 +21,24 @@
             color: var(--ink);
             margin: 0;
             background: #e2e8f0;
+            font-size: 12px;
+            line-height: 1.3;
         }
 
         .sheet {
-            width: 210mm;
-            min-height: 297mm;
-            margin: 12px auto;
-            padding: 14mm 14mm 16mm;
+            width: var(--paper);
+            margin: 10px auto;
+            padding: var(--pad);
             background: #fff;
             box-shadow: 0 1px 8px rgba(15, 23, 42, 0.12);
         }
 
         .toolbar {
-            width: 210mm;
-            margin: 12px auto 0;
+            width: var(--paper);
+            margin: 10px auto 0;
             display: flex;
-            gap: 0.5rem;
-            justify-content: flex-end;
+            gap: 0.4rem;
+            justify-content: center;
         }
 
         .toolbar button {
@@ -43,8 +46,8 @@
             background: #0f172a;
             color: #fff;
             border-radius: 4px;
-            padding: 0.4rem 0.9rem;
-            font-size: 0.875rem;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
             cursor: pointer;
         }
 
@@ -54,127 +57,96 @@
         }
 
         .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 1rem;
-            border-bottom: 2px solid var(--ink);
-            padding-bottom: 0.75rem;
-            margin-bottom: 1rem;
+            text-align: center;
+            border-bottom: 1px dashed var(--line);
+            padding-bottom: 6px;
+            margin-bottom: 6px;
         }
 
         .header h1 {
             margin: 0;
-            font-size: 1.45rem;
+            font-size: 15px;
             letter-spacing: 0.02em;
         }
 
-        .header .sub {
-            margin-top: 0.2rem;
-            color: var(--muted);
-            font-size: 0.85rem;
-        }
+        .header .sub { color: var(--muted); font-size: 11px; }
 
         .badge {
-            border: 1px solid var(--line);
-            background: var(--soft);
-            padding: 0.35rem 0.55rem;
-            font-size: 0.8rem;
-            white-space: nowrap;
-        }
-
-        .meta-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.55rem 1.25rem;
-            margin-bottom: 1rem;
-            font-size: 0.9rem;
-        }
-
-        .label {
-            color: var(--muted);
-            font-size: 0.72rem;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            margin-bottom: 0.1rem;
-        }
-
-        .value { font-weight: 600; }
-        .hint { color: var(--muted); font-size: 0.8rem; margin-top: 0.1rem; }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 0.35rem;
-        }
-
-        th, td {
-            border-bottom: 1px solid var(--line);
-            padding: 0.4rem 0.3rem;
-            font-size: 0.86rem;
-            text-align: left;
-            vertical-align: top;
-        }
-
-        th {
-            background: var(--soft);
-            font-size: 0.75rem;
+            display: inline-block;
+            margin-top: 3px;
+            font-size: 10px;
             text-transform: uppercase;
             letter-spacing: 0.03em;
-            color: #334155;
         }
 
-        .text-end { text-align: right; }
+        .meta { font-size: 11px; margin-bottom: 6px; }
 
-        .section-title {
-            margin: 1.1rem 0 0.35rem;
-            font-size: 0.95rem;
-            font-weight: 700;
+        .meta .row {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+            padding: 1px 0;
         }
 
-        .totals {
-            margin-top: 0.9rem;
-            margin-left: auto;
-            width: 62mm;
-            font-size: 0.88rem;
+        .meta .label { color: var(--muted); }
+        .meta .value { font-weight: 600; text-align: right; }
+
+        .divider { border-top: 1px dashed var(--line); margin: 6px 0; }
+
+        .items { width: 100%; }
+
+        .item { padding: 3px 0; border-bottom: 1px dotted var(--line); }
+        .item-name { font-weight: 600; font-size: 11px; }
+        .item-code { color: var(--muted); font-size: 10px; }
+
+        .item-line {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+            font-size: 11px;
         }
+
+        .item-adj { color: var(--muted); font-size: 10px; }
+
+        .totals { margin-top: 6px; font-size: 11px; }
 
         .totals div {
             display: flex;
             justify-content: space-between;
-            gap: 0.75rem;
-            padding: 0.18rem 0;
+            gap: 0.5rem;
+            padding: 1px 0;
         }
 
         .totals .net {
             font-weight: 700;
-            font-size: 1rem;
-            border-top: 1px solid var(--line);
-            margin-top: 0.25rem;
-            padding-top: 0.4rem;
+            font-size: 13px;
+            border-top: 1px solid var(--ink);
+            border-bottom: 1px solid var(--ink);
+            margin: 3px 0;
+            padding: 3px 0;
         }
 
         .footer-note {
-            margin-top: 1.25rem;
+            margin-top: 8px;
+            text-align: center;
             color: var(--muted);
-            font-size: 0.8rem;
+            font-size: 10px;
             border-top: 1px dashed var(--line);
-            padding-top: 0.5rem;
+            padding-top: 6px;
         }
 
         @@page {
-            size: A4 portrait;
-            margin: 10mm;
+            size: var(--paper) auto;
+            margin: 0;
         }
 
         @@media print {
-            body { background: #fff; }
+            body { background: #fff; font-size: 12px; }
             .toolbar { display: none !important; }
             .sheet {
                 width: auto;
-                min-height: auto;
                 margin: 0;
-                padding: 0;
+                padding: 0 1mm;
                 box-shadow: none;
             }
         }
@@ -193,78 +165,43 @@
 
     <div class="sheet">
         <div class="header">
-            <div>
-                <h1>LipSip Mart</h1>
-                <div class="sub">0339-5470747</div>
-            </div>
+            <h1>LipSip Mart</h1>
+            <div class="sub">0339-5470747</div>
             <div class="badge">{{ $invoice->invoice_status ?: 'Completed' }} · {{ $invoice->payment_status ?: 'Paid' }}</div>
         </div>
 
-        <div class="meta-grid">
-            <div>
-                <div class="label">Invoice No</div>
-                <div class="value">{{ $invoice->invoice_no }}</div>
-            </div>
-            <div>
-                <div class="label">Date</div>
-                <div class="value">{{ optional($invoice->invoice_date)->format('d-M-Y H:i') }}</div>
-            </div>
-            <div>
-                <div class="label">Customer</div>
-                <div class="value">{{ $customerName }}</div>
-                @if($customerCode)
-                    <div class="hint">{{ $customerCode }}</div>
-                @endif
-            </div>
-            <div>
-                <div class="label">Payment</div>
-                <div class="value">{{ $paymentName }}</div>
-                <div class="hint">Cashier: {{ $invoice->user_name ?: '—' }}</div>
-            </div>
-            <div>
-                <div class="label">Paid / Balance</div>
-                <div class="value">{{ number_format((float) $invoice->paid_amount, 2) }} / {{ number_format((float) $invoice->balance_amount, 2) }}</div>
-            </div>
-            @if($invoice->customer_given_amount !== null)
-            <div>
-                <div class="label">Given / Change</div>
-                <div class="value">{{ number_format((float) $invoice->customer_given_amount, 2) }} / {{ number_format((float) ($invoice->change_given_amount ?? 0), 2) }}</div>
-            </div>
-            @endif
+        <div class="meta">
+            <div class="row"><span class="label">Invoice</span><span class="value">{{ $invoice->invoice_no }}</span></div>
+            <div class="row"><span class="label">Date</span><span class="value">{{ optional($invoice->invoice_date)->format('d-M-Y H:i') }}</span></div>
+            <div class="row"><span class="label">Customer</span><span class="value">{{ $customerName }}@if($customerCode) ({{ $customerCode }})@endif</span></div>
+            <div class="row"><span class="label">Payment</span><span class="value">{{ $paymentName }}</span></div>
+            <div class="row"><span class="label">Cashier</span><span class="value">{{ $invoice->user_name ?: '—' }}</span></div>
         </div>
 
-        <div class="section-title">Items</div>
-        <table>
-            <thead>
-                <tr>
-                    <th style="width:28px">#</th>
-                    <th>Product</th>
-                    <th class="text-end">Qty</th>
-                    <th class="text-end">Price</th>
-                    <th class="text-end">Discount</th>
-                    <th class="text-end">Tax</th>
-                    <th class="text-end">Line Total</th>
-                </tr>
-            </thead>
-            <tbody>
-            @forelse($invoice->details as $i => $line)
-                <tr>
-                    <td>{{ $i + 1 }}</td>
-                    <td>
-                        <div>{{ optional($line->product)->product_name ?: 'Item #'.$line->product_uid }}</div>
-                        <div class="hint">{{ optional($line->product)->product_code }}</div>
-                    </td>
-                    <td class="text-end">{{ number_format((float) $line->quantity, 3) }}</td>
-                    <td class="text-end">{{ number_format((float) $line->unit_price, 2) }}</td>
-                    <td class="text-end">{{ number_format((float) $line->discount_amount, 2) }}</td>
-                    <td class="text-end">{{ number_format((float) $line->tax_amount, 2) }}</td>
-                    <td class="text-end">{{ number_format((float) $line->total_amount, 2) }}</td>
-                </tr>
-            @empty
-                <tr><td colspan="7">No line items.</td></tr>
-            @endforelse
-            </tbody>
-        </table>
+        <div class="divider"></div>
+
+        <div class="items">
+        @forelse($invoice->details as $i => $line)
+            <div class="item">
+                <div class="item-name">{{ $i + 1 }}. {{ optional($line->product)->product_name ?: 'Item #'.$line->product_uid }}</div>
+                @if(optional($line->product)->product_code)
+                    <div class="item-code">{{ $line->product->product_code }}</div>
+                @endif
+                <div class="item-line">
+                    <span>{{ rtrim(rtrim(number_format((float) $line->quantity, 3), '0'), '.') }} x {{ number_format((float) $line->unit_price, 2) }}</span>
+                    <span>{{ number_format((float) $line->total_amount, 2) }}</span>
+                </div>
+                @if((float) $line->discount_amount != 0 || (float) $line->tax_amount != 0)
+                    <div class="item-line item-adj">
+                        <span>Disc {{ number_format((float) $line->discount_amount, 2) }} · Tax {{ number_format((float) $line->tax_amount, 2) }}</span>
+                        <span></span>
+                    </div>
+                @endif
+            </div>
+        @empty
+            <div class="item">No line items.</div>
+        @endforelse
+        </div>
 
         <div class="totals">
             <div><span>Sub Total</span><span>{{ number_format((float) $invoice->sub_total, 2) }}</span></div>
@@ -274,10 +211,16 @@
             <div class="net"><span>Net Amount</span><span>{{ number_format((float) $invoice->net_amount, 2) }}</span></div>
             <div><span>Paid</span><span>{{ number_format((float) $invoice->paid_amount, 2) }}</span></div>
             <div><span>Balance</span><span>{{ number_format((float) $invoice->balance_amount, 2) }}</span></div>
+            @if($invoice->customer_given_amount !== null)
+            <div><span>Given</span><span>{{ number_format((float) $invoice->customer_given_amount, 2) }}</span></div>
+            <div><span>Change</span><span>{{ number_format((float) ($invoice->change_given_amount ?? 0), 2) }}</span></div>
+            @endif
         </div>
 
         @if(!empty($invoice->remarks))
             <div class="footer-note">Remarks: {{ $invoice->remarks }}</div>
+        @else
+            <div class="footer-note">Thank you for shopping!</div>
         @endif
     </div>
 </body>
